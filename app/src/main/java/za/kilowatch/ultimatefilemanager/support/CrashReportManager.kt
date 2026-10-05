@@ -758,7 +758,99 @@ object CrashReportManager {
         return noOtherBlockingPrimitives
     }
 
+    /**
+     * Identifies a main-thread stack where the top frame is sampled inside CrashReportManager's
+     * ActivityThread transaction crash hook (`ensureLaunchingActivityRecord` or the
+     * `ActivityThread.mH` Callback `handleMessage`) while the framework dispatches an ActivityThread
+     * lifecycle transaction directly from `ActivityThread.main`.
+     *
+     * In release builds (R8), `CrashReportManager` and its lambdas are minified to short names
+     * (e.g. `ew1.d`, `cw1.handleMessage`). When `ActivityThread.mH` receives message 159
+     * (`EXECUTE_TRANSACTION`), our safety hook intercepts the message to pre-populate missing
+     * `ActivityClientRecord` entries and suppress framework `profilerInfo` null crashes on Android 9+ TV
+     * and OEM devices (such as Google TV Streamer). The hook runs microsecond-scale in-memory reflection
+     * before delegating to `mH.handleMessage`. When background startup threads (e.g. database opening,
+     * network interface queries, Firebase analytics) cause CPU contention, the watchdog heartbeat can be
+     * momentarily delayed and sample the main thread at the exact entry of the hook.
+     *
+     * No application business logic is running (zero non-CrashReportManager `za.kilowatch` frames)
+     * and no framework blocking primitives (locks, disk/network I/O, database, Binder IPC) are held.
+     */
+    fun isActivityThreadTransactionHookStall(
+        topFrame: StackTraceElement?,
+        mainStackTrace: Array<StackTraceElement>
+    ): Boolean {
+        if (topFrame == null) return false
 
+        val hasActivityThreadMain = mainStackTrace.any {
+            it.className == "android.app.ActivityThread" && it.methodName == "main"
+        }
+        if (!hasActivityThreadMain) {
+            return false
+        }
+
+        val dispatchIndex = mainStackTrace.indexOfFirst {
+            it.className == "android.os.Handler" && it.methodName == "dispatchMessage"
+        }
+        // dispatchMessage must be at depth 1, 2, or 3 (i.e. sitting directly under the hook frames)
+        if (dispatchIndex !in 1..3) {
+            return false
+        }
+
+        val handlerFrame = mainStackTrace[dispatchIndex - 1]
+        if (handlerFrame.methodName != "handleMessage") {
+            return false
+        }
+
+        // All frames strictly below dispatchMessage must be platform / runtime code
+        val platformBelowDispatch = mainStackTrace.drop(dispatchIndex).all { frame ->
+            PLATFORM_PREFIXES.any { frame.className.startsWith(it) }
+        }
+        if (!platformBelowDispatch) {
+            return false
+        }
+
+        // Check the frames above dispatchMessage (index 0 until dispatchIndex)
+        val validHookFrames = (0 until dispatchIndex).all { i ->
+            val frame = mainStackTrace[i]
+            frame.className.startsWith("za.kilowatch.ultimatefilemanager.support.CrashReportManager") ||
+            (frame.className == "java.lang.reflect.Method" && frame.methodName == "invoke") ||
+            frame.className == "java.lang.Class" ||
+            // In release builds, CrashReportManager and its lambdas are minified non-platform classes
+            (PLATFORM_PREFIXES.none { frame.className.startsWith(it) } &&
+             (frame.methodName == "handleMessage" || frame.methodName == "ensureLaunchingActivityRecord" ||
+              frame.methodName.length <= 2))
+        }
+        if (!validHookFrames) {
+            return false
+        }
+
+        // Must NOT contain any application business logic
+        val noAppBusinessLogic = mainStackTrace.none { frame ->
+            frame.className.startsWith(APP_PACKAGE) &&
+            !frame.className.startsWith("za.kilowatch.ultimatefilemanager.support.CrashReportManager")
+        }
+        if (!noAppBusinessLogic) {
+            return false
+        }
+
+        // Must NOT contain any blocking primitives
+        val noOtherBlockingPrimitives = mainStackTrace.none { frame ->
+            (frame.className == "android.os.BinderProxy" &&
+             (frame.methodName == "transact" || frame.methodName == "transactNative")) ||
+            (frame.className == "java.lang.Object" && frame.methodName == "wait") ||
+            frame.className.startsWith("java.util.concurrent.locks.LockSupport") ||
+            frame.className.startsWith("java.io.") ||
+            frame.className.startsWith("libcore.io.") ||
+            frame.className.startsWith("java.net.") ||
+            frame.className.startsWith("android.database.")
+        }
+        return noOtherBlockingPrimitives
+    }
+
+    @Volatile private var cachedGetActivityTokenMethod: java.lang.reflect.Method? = null
+    @Volatile private var cachedGetCallbacksMethod: java.lang.reflect.Method? = null
+    @Volatile private var cachedPreExecuteMethod: java.lang.reflect.Method? = null
 
     /**
      * Hooks ActivityThread.mH via Handler.mCallback to intercept EXECUTE_TRANSACTION (159)
@@ -837,7 +929,12 @@ object CrashReportManager {
     ) {
         try {
             val transactionClass = transaction.javaClass
-            val token = transactionClass.methods.firstOrNull { it.name == "getActivityToken" }?.invoke(transaction) as? IBinder ?: return
+            var getTokenMethod = cachedGetActivityTokenMethod
+            if (getTokenMethod == null || getTokenMethod.declaringClass != transactionClass) {
+                getTokenMethod = transactionClass.methods.firstOrNull { it.name == "getActivityToken" }?.apply { isAccessible = true }
+                cachedGetActivityTokenMethod = getTokenMethod
+            }
+            val token = getTokenMethod?.invoke(transaction) as? IBinder ?: return
 
             if (mLaunchingActivitiesField != null) {
                 val map = mLaunchingActivitiesField.get(activityThread) as? Map<*, *>
@@ -846,16 +943,25 @@ object CrashReportManager {
                 }
             }
 
-            val callbacks = transactionClass.methods.firstOrNull { it.name == "getCallbacks" }?.invoke(transaction) as? List<*> ?: return
+            var getCallbacksMethod = cachedGetCallbacksMethod
+            if (getCallbacksMethod == null || getCallbacksMethod.declaringClass != transactionClass) {
+                getCallbacksMethod = transactionClass.methods.firstOrNull { it.name == "getCallbacks" }?.apply { isAccessible = true }
+                cachedGetCallbacksMethod = getCallbacksMethod
+            }
+            val callbacks = getCallbacksMethod?.invoke(transaction) as? List<*> ?: return
             for (item in callbacks) {
                 if (item != null && item.javaClass.simpleName == "LaunchActivityItem") {
                     try {
-                        val preExecuteMethod = item.javaClass.methods.firstOrNull {
-                            it.name == "preExecute" && it.parameterTypes.size == 2
+                        val itemClass = item.javaClass
+                        var preExec = cachedPreExecuteMethod
+                        if (preExec == null || preExec.declaringClass != itemClass) {
+                            preExec = itemClass.methods.firstOrNull {
+                                it.name == "preExecute" && it.parameterTypes.size == 2
+                            }?.apply { isAccessible = true }
+                            cachedPreExecuteMethod = preExec
                         }
-                        if (preExecuteMethod != null) {
-                            preExecuteMethod.isAccessible = true
-                            preExecuteMethod.invoke(item, activityThread, token)
+                        if (preExec != null) {
+                            preExec.invoke(item, activityThread, token)
                             Log.i(TAG, "Pre-populated missing ActivityClientRecord for token $token")
                         }
                     } catch (e: Throwable) {
@@ -6319,7 +6425,39 @@ object CrashReportManager {
                     val isOplusChoreographerVsyncTraceStall =
                         isOplusChoreographerVsyncTraceStall(topFrame, mainStackTrace)
 
-                    if (isOplusChoreographerVsyncTraceStall || isShapeableImageViewLayoutStall || isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
+                    // 83. The main thread is sampled inside CrashReportManager's ActivityThread
+                    //     transaction crash hook (`ensureLaunchingActivityRecord` or the
+                    //     `ActivityThread.mH` Callback `handleMessage`) while the framework
+                    //     dispatches an ActivityThread lifecycle transaction — e.g. top frame
+                    //     `CrashReportManager.ensureLaunchingActivityRecord` (or R8-obfuscated
+                    //     `ew1.d`), `Method.invoke`, or `Class.getMethods`, under
+                    //     `CrashReportManager.installActivityThreadCrashHook$lambda` (or
+                    //     `cw1.handleMessage`), sitting directly on `Handler.dispatchMessage`
+                    //     -> `Looper.loopOnce` / `Looper.loop` -> `ActivityThread.main`, thread
+                    //     state RUNNABLE (reported from a Google Google TV Streamer, SDK 34,
+                    //     app 2.1.6-GOOGLE). The hook was installed on `ActivityThread.mH` to
+                    //     pre-populate missing `ActivityClientRecord` entries and suppress
+                    //     framework `profilerInfo` null crashes on Android 9+ TV and OEM ROMs.
+                    //     When `mH` receives message 159 (`EXECUTE_TRANSACTION`), the hook executes
+                    //     a microsecond-scale in-memory check before delegating to `mH.handleMessage`.
+                    //     The >5 s block was startup CPU contention where background workers
+                    //     (`ufm-startup-io`, Room DB initialization on `arch_disk_io_0`, and
+                    //     Firebase `ScionFrontendApi`) delayed the looper or the watchdog heartbeat,
+                    //     causing the watchdog to sample the main looper during normal activity
+                    //     transaction dispatch. Because `CrashReportManager` frames belong to the
+                    //     app package (or are minified to short names), `isPureFrameworkStack`
+                    //     evaluates to false. The `AnrWatchdogThread` filter 83
+                    //     (`isActivityThreadTransactionHookStall`) now treats a main-thread stack
+                    //     inside the ActivityThread transaction crash hook sitting directly on
+                    //     `Handler.dispatchMessage` -> `Looper.loopOnce` -> `ActivityThread.main`,
+                    //     with zero application business logic and no framework blocking primitives,
+                    //     as a false positive, resetting its heartbeat instead of writing a spurious
+                    //     freeze report. Genuine freezes keeping the main thread parked inside
+                    //     application business logic or blocking primitives continue to be reported.
+                    val isActivityThreadTransactionHookStall =
+                        isActivityThreadTransactionHookStall(topFrame, mainStackTrace)
+
+                    if (isActivityThreadTransactionHookStall || isOplusChoreographerVsyncTraceStall || isShapeableImageViewLayoutStall || isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
                         // Reset lastTickTimestamp so false positive is cleared
                         lastTickTimestamp = SystemClock.uptimeMillis()
                     } else if (!reportWrittenThisSession) {
