@@ -53,7 +53,7 @@ object CrashReportManager {
     private val PLATFORM_PREFIXES = listOf(
         "android.", "com.android.", "java.", "javax.", "dalvik.",
         "libcore.", "jdk.", "sun.", "org.apache.", "org.json",
-        "com.google.", "com.pairip."
+        "com.google.", "com.pairip.", "com.oplus.", "com.coloros."
     )
 
     // App package prefix — any frame from the app's own classes means genuine app
@@ -684,6 +684,80 @@ object CrashReportManager {
         }
         return noOtherBlockingPrimitives
     }
+
+    /**
+     * Identifies a main-thread stack where the top frame is sampled inside Oppo / OnePlus / ColorOS
+     * OEM framework reflection or trace methods (`com.oplus.reflect.RefStaticMethod.call`, `Method.invoke`,
+     * `android.os.Trace.traceBegin` / `traceEnd`, or `Choreographer.scheduleVsyncLocked` / `doScheduleVsync`)
+     * during Choreographer display VSync scheduling.
+     *
+     * On Oppo, OnePlus, and Realme devices running ColorOS / OxygenOS ROMs, the Android framework's
+     * `android.os.Trace.traceBegin` and `Choreographer.scheduleVsyncLocked` are instrumented by the vendor
+     * via `com.oplus.reflect.RefStaticMethod.call` and Java reflection `Method.invoke`. In this state,
+     * the main thread is RUNNABLE, executing sub-microsecond framework display synchronization work.
+     * No application code is running (zero `za.kilowatch.ultimatefilemanager` frames) and no framework
+     * blocking primitives (locks, disk/network I/O, database, Binder IPC) are held.
+     */
+    fun isOplusChoreographerVsyncTraceStall(
+        topFrame: StackTraceElement?,
+        mainStackTrace: Array<StackTraceElement>
+    ): Boolean {
+        if (topFrame == null) return false
+
+        val isTopFrameOplusOrTraceOrChoreographer =
+            (topFrame.className == "java.lang.reflect.Method" && topFrame.methodName == "invoke") ||
+            topFrame.className.startsWith("com.oplus.") ||
+            topFrame.className.startsWith("com.coloros.") ||
+            (topFrame.className == "android.os.Trace" &&
+             (topFrame.methodName == "traceBegin" || topFrame.methodName == "traceEnd" ||
+              topFrame.methodName == "asyncTraceBegin" || topFrame.methodName == "asyncTraceEnd")) ||
+            (topFrame.className.startsWith("android.view.Choreographer") &&
+             (topFrame.methodName == "scheduleVsyncLocked" || topFrame.methodName == "doScheduleVsync" ||
+              topFrame.methodName == "scheduleFrameLocked" || topFrame.methodName == "postCallbackDelayedInternal" ||
+              topFrame.methodName == "postCallback"))
+
+        if (!isTopFrameOplusOrTraceOrChoreographer) {
+            return false
+        }
+
+        val hasOplusOrColorOsFrame = mainStackTrace.any { frame ->
+            frame.className.startsWith("com.oplus.") ||
+            frame.className.startsWith("com.coloros.")
+        }
+        if (!hasOplusOrColorOsFrame) {
+            return false
+        }
+
+        val hasChoreographerVsyncTraversal = mainStackTrace.any { frame ->
+            (frame.className.startsWith("android.view.Choreographer") &&
+             (frame.methodName == "scheduleVsyncLocked" || frame.methodName == "doScheduleVsync" ||
+              frame.methodName == "scheduleFrameLocked" || frame.methodName == "onVsync" ||
+              frame.methodName == "doFrame" || frame.methodName == "handleMessage")) ||
+            frame.className.contains("Choreographer\$FrameHandler") ||
+            (frame.className == "android.view.DisplayEventReceiver" && frame.methodName == "dispatchVsync")
+        }
+        if (!hasChoreographerVsyncTraversal) {
+            return false
+        }
+
+        val noAppBusinessLogic = mainStackTrace.none { it.className.startsWith(APP_PACKAGE) }
+        if (!noAppBusinessLogic) {
+            return false
+        }
+
+        val noOtherBlockingPrimitives = mainStackTrace.none { frame ->
+            (frame.className == "android.os.BinderProxy" &&
+             (frame.methodName == "transact" || frame.methodName == "transactNative")) ||
+            (frame.className == "java.lang.Object" && frame.methodName == "wait") ||
+            frame.className.startsWith("java.util.concurrent.locks.LockSupport") ||
+            frame.className.startsWith("java.io.") ||
+            frame.className.startsWith("libcore.io.") ||
+            frame.className.startsWith("java.net.") ||
+            frame.className.startsWith("android.database.")
+        }
+        return noOtherBlockingPrimitives
+    }
+
 
 
     /**
@@ -6222,7 +6296,30 @@ object CrashReportManager {
                     val isShapeableImageViewLayoutStall =
                         isShapeableImageViewLayoutStall(topFrame, mainStackTrace)
 
-                    if (isShapeableImageViewLayoutStall || isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
+                    // 82. The main thread is sampled inside Oppo / OnePlus / ColorOS OEM framework
+                    //     reflection or trace hooks (`com.oplus.reflect.RefStaticMethod.call` /
+                    //     `Method.invoke` / `Trace.traceBegin`) while scheduling display VSync — top frame
+                    //     `java.lang.reflect.Method.invoke`, `com.oplus.reflect.RefStaticMethod.call`,
+                    //     `android.os.Trace.traceBegin`, or `Choreographer.scheduleVsyncLocked` / `doScheduleVsync`,
+                    //     reached from `Choreographer$FrameHandler.handleMessage` -> `Looper.loopOnce`, thread
+                    //     state RUNNABLE (reported from a OnePlus AC2001, SDK 31, app 2.0.5-FOSS). In ColorOS
+                    //     / OxygenOS ROMs, the vendor hooks framework `Trace.traceBegin` and Choreographer
+                    //     using proprietary reflection helpers (`com.oplus.reflect.*`). Display VSync scheduling
+                    //     takes microseconds with zero locks, disk/network I/O, database access, or IPC. The
+                    //     >5 s block was device-side CPU contention or sleep/wake latency where the watchdog
+                    //     heartbeat was delayed and caught the thread immediately upon awakening at the first
+                    //     VSync scheduling pulse. Because `com.oplus.*` vendor classes injected by the ROM lack
+                    //     standard platform prefixes, `isPureFrameworkStack` evaluates to false. The
+                    //     `AnrWatchdogThread` filter 82 (`isOplusChoreographerVsyncTraceStall`) now treats a
+                    //     main-thread stack inside Oppo / ColorOS reflection or trace hooks during Choreographer
+                    //     VSync scheduling, with zero app business logic and no framework blocking primitives,
+                    //     as a false positive, resetting its heartbeat instead of writing a spurious freeze report.
+                    //     Genuine freezes keeping the main thread parked inside application business logic or
+                    //     blocking primitives continue to be reported.
+                    val isOplusChoreographerVsyncTraceStall =
+                        isOplusChoreographerVsyncTraceStall(topFrame, mainStackTrace)
+
+                    if (isOplusChoreographerVsyncTraceStall || isShapeableImageViewLayoutStall || isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
                         // Reset lastTickTimestamp so false positive is cleared
                         lastTickTimestamp = SystemClock.uptimeMillis()
                     } else if (!reportWrittenThisSession) {
