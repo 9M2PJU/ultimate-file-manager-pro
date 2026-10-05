@@ -114,30 +114,40 @@ object ShizukuShellWrapper {
      */
     suspend fun requestPermission(): PermissionState {
         val connection = Porter.connection.value ?: return PermissionState.Denied(false)
-        return connection.requestPermission()
+        return try {
+            connection.requestPermission()
+        } catch (e: Throwable) {
+            Log.w("ShizukuShellWrapper", "requestPermission failed: ${e.message}")
+            PermissionState.Denied(false)
+        }
     }
 
     fun isAuthorized(context: Context? = null): Boolean {
-        val connection = Porter.connection.value ?: return false
-        val isGranted = connection.permission.value is PermissionState.Granted
-        if (!isGranted) return false
+        return try {
+            val connection = Porter.connection.value ?: return false
+            val isGranted = connection.permission.value is PermissionState.Granted
+            if (!isGranted) return false
 
-        val ctx = context ?: try {
-            za.kilowatch.ultimatefilemanager.UfmApplication.instance
-        } catch (_: Exception) { null }
+            val ctx = context ?: try {
+                za.kilowatch.ultimatefilemanager.UfmApplication.instance
+            } catch (_: Exception) { null }
 
-        if (ctx != null) {
-            val activeManager = when (connection.backend) {
-                PorterBackend.PORTER -> ElevatedManager.PORTER
-                PorterBackend.SHIZUKU -> {
-                    if (isShizukuInstalled(ctx)) ElevatedManager.SHIZUKU else ElevatedManager.SHEVERY
+            if (ctx != null) {
+                val activeManager = when (connection.backend) {
+                    PorterBackend.PORTER -> ElevatedManager.PORTER
+                    PorterBackend.SHIZUKU -> {
+                        if (isShizukuInstalled(ctx)) ElevatedManager.SHIZUKU else ElevatedManager.SHEVERY
+                    }
+                }
+                if (!ElevatedAccessPreferenceManager.isManagerEnabled(ctx, activeManager)) {
+                    return false
                 }
             }
-            if (!ElevatedAccessPreferenceManager.isManagerEnabled(ctx, activeManager)) {
-                return false
-            }
+            true
+        } catch (e: Throwable) {
+            Log.w("ShizukuShellWrapper", "isAuthorized check failed: ${e.message}")
+            false
         }
-        return true
     }
 
     private val cachedPrimaryPrefixes = java.util.concurrent.ConcurrentHashMap<String, String>()
@@ -321,7 +331,7 @@ object ShizukuShellWrapper {
             }
             val lines = if (result.output.isEmpty()) emptyList() else result.output.trimEnd('\r', '\n').lines()
             Pair(result.exitCode, lines)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w("ShizukuShellWrapper", "runCommand failed: ${e.message}")
             Pair(-1, emptyList())
         }

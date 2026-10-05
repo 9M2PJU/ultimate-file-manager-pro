@@ -233,8 +233,12 @@ class ElevatedAccessActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Porter.connection.collect {
-                    refresh()
+                try {
+                    Porter.connection.collect {
+                        refresh()
+                    }
+                } catch (e: Throwable) {
+                    Log.w("ElevatedAccess", "Porter.connection collection failed: ${e.message}")
                 }
             }
         }
@@ -308,9 +312,13 @@ class ElevatedAccessActivity : AppCompatActivity() {
         if (!hasRenderedResolvedState) renderDetecting()
 
         lifecycleScope.launch {
-            // Binding and launcher-icon reads are IPC and disk; keep them off the main thread.
-            val state = withContext(Dispatchers.IO) { resolver.resolve() }
-            render(state)
+            try {
+                // Binding and launcher-icon reads are IPC and disk; keep them off the main thread.
+                val state = withContext(Dispatchers.IO) { resolver.resolve() }
+                render(state)
+            } catch (e: Throwable) {
+                Log.w("ElevatedAccess", "refresh resolve failed: ${e.message}")
+            }
         }
     }
 
@@ -605,12 +613,17 @@ class ElevatedAccessActivity : AppCompatActivity() {
         dialogView.findViewById<View>(R.id.btnAuthorize).setOnClickListener {
             dialog.dismiss()
             lifecycleScope.launch {
-                val state = ShizukuShellWrapper.requestPermission()
-                if (state is PermissionState.Granted) {
-                    refresh()
-                } else if (state is PermissionState.Denied && state.permanentlyDenied) {
-                    Toast.makeText(this@ElevatedAccessActivity, R.string.shizuku_start_failed, Toast.LENGTH_SHORT).show()
-                } else {
+                try {
+                    val state = ShizukuShellWrapper.requestPermission()
+                    if (state is PermissionState.Granted) {
+                        refresh()
+                    } else if (state is PermissionState.Denied && state.permanentlyDenied) {
+                        Toast.makeText(this@ElevatedAccessActivity, R.string.shizuku_start_failed, Toast.LENGTH_SHORT).show()
+                    } else {
+                        refresh()
+                    }
+                } catch (e: Throwable) {
+                    Log.w("ElevatedAccess", "Authorize request failed: ${e.message}")
                     refresh()
                 }
             }
@@ -646,29 +659,37 @@ class ElevatedAccessActivity : AppCompatActivity() {
         showStartingDialog()
 
         lifecycleScope.launch {
-            sendStartBroadcast(manager)
-            var started = awaitBinder()
+            try {
+                sendStartBroadcast(manager)
+                var started = awaitBinder()
 
-            if (!started) {
-                sendBinderRequestBroadcast(manager)
-                started = awaitBinder()
+                if (!started) {
+                    sendBinderRequestBroadcast(manager)
+                    started = awaitBinder()
+                }
+
+                startingDialog?.dismiss()
+                startingDialog = null
+                startingManager = null
+
+                if (!started) {
+                    // Step three: hand the user the one thing that can still change the outcome.
+                    Toast.makeText(
+                        this@ElevatedAccessActivity,
+                        R.string.shizuku_start_failed,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openManagerApp(manager)
+                }
+
+                refresh()
+            } catch (e: Throwable) {
+                Log.w("ElevatedAccess", "startManagerService failed: ${e.message}")
+                startingDialog?.dismiss()
+                startingDialog = null
+                startingManager = null
+                refresh()
             }
-
-            startingDialog?.dismiss()
-            startingDialog = null
-            startingManager = null
-
-            if (!started) {
-                // Step three: hand the user the one thing that can still change the outcome.
-                Toast.makeText(
-                    this@ElevatedAccessActivity,
-                    R.string.shizuku_start_failed,
-                    Toast.LENGTH_LONG
-                ).show()
-                openManagerApp(manager)
-            }
-
-            refresh()
         }
     }
 
@@ -786,46 +807,55 @@ class ElevatedAccessActivity : AppCompatActivity() {
     private fun disconnectAppAccess(manager: ElevatedManager) {
         val managerTitle = getString(manager.titleRes)
         lifecycleScope.launch {
-            ElevatedAccessPreferenceManager.setManagerEnabled(this@ElevatedAccessActivity, manager, false)
-            refresh()
-            Toast.makeText(
-                this@ElevatedAccessActivity,
-                getString(R.string.shizuku_app_access_revoked, managerTitle),
-                Toast.LENGTH_SHORT
-            ).show()
+            try {
+                ElevatedAccessPreferenceManager.setManagerEnabled(this@ElevatedAccessActivity, manager, false)
+                refresh()
+                Toast.makeText(
+                    this@ElevatedAccessActivity,
+                    getString(R.string.shizuku_app_access_revoked, managerTitle),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Throwable) {
+                Log.w("ElevatedAccess", "disconnectAppAccess failed: ${e.message}")
+            }
         }
     }
 
     private fun enableAppAccess(manager: ElevatedManager) {
         val managerTitle = getString(manager.titleRes)
         lifecycleScope.launch {
-            ElevatedAccessPreferenceManager.setManagerEnabled(this@ElevatedAccessActivity, manager, true)
+            try {
+                ElevatedAccessPreferenceManager.setManagerEnabled(this@ElevatedAccessActivity, manager, true)
 
-            // If root is authorized, grant permission via su shell
-            if (RootShellWrapper.isAuthorized(this@ElevatedAccessActivity)) {
-                withContext(Dispatchers.IO) {
-                    try {
-                        RootShellWrapper.runCommand("pm grant $packageName ${manager.permission}")
-                    } catch (e: Throwable) {
-                        Log.w("ElevatedAccess", "Root pm grant error: ${e.message}")
+                // If root is authorized, grant permission via su shell
+                if (RootShellWrapper.isAuthorized(this@ElevatedAccessActivity)) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            RootShellWrapper.runCommand("pm grant $packageName ${manager.permission}")
+                        } catch (e: Throwable) {
+                            Log.w("ElevatedAccess", "Root pm grant error: ${e.message}")
+                        }
                     }
                 }
-            }
 
-            val isAuth = withContext(Dispatchers.IO) { probe.isAuthorized() }
-            if (!isAuth) {
-                val state = ShizukuShellWrapper.requestPermission()
-                if (state !is PermissionState.Granted) {
-                    openManagerApp(manager)
+                val isAuth = withContext(Dispatchers.IO) { probe.isAuthorized() }
+                if (!isAuth) {
+                    val state = ShizukuShellWrapper.requestPermission()
+                    if (state !is PermissionState.Granted) {
+                        openManagerApp(manager)
+                    }
+                } else {
+                    Toast.makeText(
+                        this@ElevatedAccessActivity,
+                        getString(R.string.shizuku_app_access_granted_toast, managerTitle),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-            } else {
-                Toast.makeText(
-                    this@ElevatedAccessActivity,
-                    getString(R.string.shizuku_app_access_granted_toast, managerTitle),
-                    Toast.LENGTH_SHORT
-                ).show()
+                refresh()
+            } catch (e: Throwable) {
+                Log.w("ElevatedAccess", "enableAppAccess failed: ${e.message}")
+                refresh()
             }
-            refresh()
         }
     }
 
