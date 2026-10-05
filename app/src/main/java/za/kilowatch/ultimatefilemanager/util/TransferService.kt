@@ -161,7 +161,11 @@ class TransferService : Service() {
             return START_NOT_STICKY
         }
 
-        acquireLocks()
+        try {
+            acquireLocks()
+        } catch (e: Throwable) {
+            Log.w(TAG, "acquireLocks failed in onStartCommand: ${e.message}")
+        }
 
         // START_NOT_STICKY: File transfers run in an application-scoped coroutine that dies with the process.
         // Returning START_NOT_STICKY ensures the system never auto-restarts this service in the background
@@ -184,12 +188,20 @@ class TransferService : Service() {
 
     override fun onDestroy() {
         activeInstance = null
-        releaseLocks()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
+        try {
+            releaseLocks()
+        } catch (e: Throwable) {
+            Log.w(TAG, "releaseLocks failed in onDestroy: ${e.message}")
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "stopForeground failed in onDestroy: ${e.message}")
         }
         super.onDestroy()
     }
@@ -252,41 +264,76 @@ class TransferService : Service() {
         // PARTIAL_WAKE_LOCK: keeps the CPU running even when the screen is off.
         // This is the critical piece that prevents TCP socket interruption on NAS copies.
         if (wakeLock == null) {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "UFM:TransferService").also {
-                it.acquire(WAKE_LOCK_TIMEOUT_MS)
-                Log.d(TAG, "PARTIAL_WAKE_LOCK acquired (timeout ${WAKE_LOCK_TIMEOUT_MS / 1000}s)")
+            try {
+                val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                if (pm != null) {
+                    val lock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "UFM:TransferService").apply {
+                        setReferenceCounted(false)
+                        acquire(WAKE_LOCK_TIMEOUT_MS)
+                    }
+                    wakeLock = lock
+                    Log.d(TAG, "PARTIAL_WAKE_LOCK acquired (timeout ${WAKE_LOCK_TIMEOUT_MS / 1000}s)")
+                }
+            } catch (e: SecurityException) {
+                wakeLock = null
+                Log.w(TAG, "WAKE_LOCK permission denied or restricted by OS: ${e.message}")
+            } catch (e: Throwable) {
+                wakeLock = null
+                Log.w(TAG, "Failed to acquire PARTIAL_WAKE_LOCK: ${e.message}")
             }
         }
 
         // WifiLock: prevents the Wi-Fi radio from entering low-power mode,
         // which would throttle or drop active NAS socket connections.
         if (wifiLock == null) {
-            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-            else
-                @Suppress("DEPRECATION") WifiManager.WIFI_MODE_FULL_HIGH_PERF
-            wifiLock = wm.createWifiLock(mode, "UFM:TransferService").also {
-                it.acquire()
-                Log.d(TAG, "WifiLock acquired (mode=$mode)")
+            try {
+                val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                if (wm != null) {
+                    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                        WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                    else
+                        @Suppress("DEPRECATION") WifiManager.WIFI_MODE_FULL_HIGH_PERF
+                    val lock = wm.createWifiLock(mode, "UFM:TransferService").apply {
+                        setReferenceCounted(false)
+                        acquire()
+                    }
+                    wifiLock = lock
+                    Log.d(TAG, "WifiLock acquired (mode=$mode)")
+                }
+            } catch (e: SecurityException) {
+                wifiLock = null
+                Log.w(TAG, "WifiLock permission denied or restricted by OS: ${e.message}")
+            } catch (e: Throwable) {
+                wifiLock = null
+                Log.w(TAG, "Failed to acquire WifiLock: ${e.message}")
             }
         }
     }
 
     private fun releaseLocks() {
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-                Log.d(TAG, "PARTIAL_WAKE_LOCK released")
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    Log.d(TAG, "PARTIAL_WAKE_LOCK released")
+                }
             }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Error releasing PARTIAL_WAKE_LOCK: ${e.message}")
+        } finally {
             wakeLock = null
         }
-        wifiLock?.let {
-            if (it.isHeld) {
-                it.release()
-                Log.d(TAG, "WifiLock released")
+
+        try {
+            wifiLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    Log.d(TAG, "WifiLock released")
+                }
             }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Error releasing WifiLock: ${e.message}")
+        } finally {
             wifiLock = null
         }
     }

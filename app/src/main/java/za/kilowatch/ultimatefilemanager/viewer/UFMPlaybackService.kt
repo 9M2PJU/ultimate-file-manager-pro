@@ -831,19 +831,33 @@ class UFMPlaybackService : Service() {
     // ── Wake Lock ───────────────────────────────────────────────────
 
     private fun acquireWakeLock() {
-        if (wakeLock == null) {
-            val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
-            wakeLock = powerManager?.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "UFM:MediaPlayback"
-            )?.apply { setReferenceCounted(false) }
+        try {
+            if (wakeLock == null) {
+                val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
+                wakeLock = powerManager?.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "UFM:MediaPlayback"
+                )?.apply { setReferenceCounted(false) }
+            }
+            wakeLock?.acquire(30 * 60 * 1000L) // max 30 min
+        } catch (e: SecurityException) {
+            wakeLock = null
+            GoRoLog.w("UFMPlaybackService", "acquireWakeLock: WAKE_LOCK permission denied or restricted: ${e.message}")
+        } catch (e: Throwable) {
+            wakeLock = null
+            GoRoLog.w("UFMPlaybackService", "acquireWakeLock failed: ${e.message}")
         }
-        wakeLock?.acquire(30 * 60 * 1000L) // max 30 min
     }
 
     private fun releaseWakeLock() {
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Throwable) {
+            GoRoLog.w("UFMPlaybackService", "releaseWakeLock failed: ${e.message}")
+        } finally {
+            wakeLock = null
         }
     }
 
