@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import za.kilowatch.ultimatefilemanager.R
 
 /**
@@ -58,15 +59,39 @@ class TransferService : Service() {
         private var activeInstance: TransferService? = null
 
         fun start(context: Context, title: String? = null, text: String? = null) {
-            val intent = Intent(context, TransferService::class.java).apply {
+            val appContext = context.applicationContext
+            val intent = Intent(appContext, TransferService::class.java).apply {
                 if (title != null) putExtra(EXTRA_TITLE, title)
                 if (text != null) putExtra(EXTRA_TEXT, text)
             }
+
+            // Prefer standard startService() when the app process is in foreground.
+            // When started via startService(), the service still promotes itself to foreground
+            // in onCreate() with startForeground(), but Android DOES NOT arm the fatal
+            // 5-second ForegroundServiceDidNotStartInTimeException watchdog. This avoids crashes
+            // when the main looper is busy during activity transitions or if transfers finish quickly.
+            val isForeground = try {
+                androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(
+                    androidx.lifecycle.Lifecycle.State.STARTED
+                )
+            } catch (_: Exception) {
+                true
+            }
+
+            if (isForeground) {
+                try {
+                    appContext.startService(intent)
+                    return
+                } catch (e: Exception) {
+                    Log.w(TAG, "startService failed in foreground (${e.message}), attempting startForegroundService fallback")
+                }
+            }
+
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
+                    ContextCompat.startForegroundService(appContext, intent)
                 } else {
-                    context.startService(intent)
+                    appContext.startService(intent)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start TransferService: ${e.message}")
@@ -75,7 +100,8 @@ class TransferService : Service() {
 
         fun stop(context: Context) {
             try {
-                context.stopService(Intent(context, TransferService::class.java))
+                val appContext = context.applicationContext
+                appContext.stopService(Intent(appContext, TransferService::class.java))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to stop TransferService: ${e.message}")
             }
@@ -111,6 +137,10 @@ class TransferService : Service() {
             indeterminate = true,
             percent = null
         )
+        safeStartForeground(notification)
+    }
+
+    private fun safeStartForeground(notification: android.app.Notification) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -118,7 +148,13 @@ class TransferService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to enter foreground in onCreate: ${e.message}")
+            Log.e(TAG, "startForeground with FOREGROUND_SERVICE_TYPE_DATA_SYNC failed: ${e.message}")
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Fallback startForeground failed: ${t.message}")
+                mainHandler.post { stopSelf() }
+            }
         }
     }
 
@@ -130,15 +166,7 @@ class TransferService : Service() {
 
         // Mandatory foreground transition: update notification with explicit title/text
         val notification = buildNotification(title, text, indeterminate = true, percent = null)
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update foreground notification: ${e.message}")
-        }
+        safeStartForeground(notification)
 
         // Notification Cancel button → cancel the active transfer(s).
         if (intent?.action == ACTION_CANCEL) {
@@ -147,17 +175,17 @@ class TransferService : Service() {
         }
 
         // Guard: If onStartCommand runs with no active transfer or stream, stop cleanly.
-        // Post stopSelf to the main looper rather than calling stopForeground(STOP_FOREGROUND_REMOVE)
+        // Post stopSelf with a short delay rather than immediately or calling stopForeground(STOP_FOREGROUND_REMOVE)
         // synchronously right after startForeground(). Stripping the foreground flag in the same
         // binder transaction causes Android framework (SDK 26-34) ActiveServices to treat the
         // startForegroundService() contract as violated, throwing RemoteServiceException.
         if (!TransferManager.isActiveTransfers()) {
             Log.w(TAG, "No active transfer or stream on startCommand — scheduling clean stop")
-            mainHandler.post {
-                if (!TransferManager.isActiveTransfers()) {
+            mainHandler.postDelayed({
+                if (!TransferManager.isActiveTransfers() && activeInstance == this) {
                     stopSelf()
                 }
-            }
+            }, 1000L)
             return START_NOT_STICKY
         }
 
@@ -176,12 +204,14 @@ class TransferService : Service() {
     override fun onTimeout(startId: Int, fgsType: Int) {
         super.onTimeout(startId, fgsType)
         Log.w(TAG, "TransferService reached system timeout for fgsType $fgsType (startId $startId)")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
-        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        } catch (_: Exception) {}
         TransferManager.cancelAll()
         stopSelf()
     }
@@ -194,14 +224,10 @@ class TransferService : Service() {
             Log.w(TAG, "releaseLocks failed in onDestroy: ${e.message}")
         }
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            nm?.cancel(NOTIFICATION_ID)
         } catch (e: Throwable) {
-            Log.w(TAG, "stopForeground failed in onDestroy: ${e.message}")
+            Log.w(TAG, "cancel notification failed in onDestroy: ${e.message}")
         }
         super.onDestroy()
     }
