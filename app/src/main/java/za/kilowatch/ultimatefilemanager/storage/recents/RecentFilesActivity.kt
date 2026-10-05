@@ -433,7 +433,12 @@ class RecentFilesActivity : AppCompatActivity() {
                         documentUri = Uri.parse(item.uriOrPath)
                     )
                 } else {
-                    File(item.uriOrPath)
+                    RecentLocalFile(
+                        pathname = item.uriOrPath,
+                        isDir = false,
+                        fileLength = item.sizeBytes,
+                        fileLastModified = item.lastModified
+                    )
                 }
                 fileList.add(fileObj)
                 labels[fileObj.absolutePath] = item.volumeLabel
