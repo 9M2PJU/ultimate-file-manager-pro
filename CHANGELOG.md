@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.7] — 2026-10-03
 
 ### Fixed
+- **Crash & ANR Report Writer File Persistence (`CrashReportManager`)**: Fixed an uncaught `java.io.FileNotFoundException` (`open failed: ENOENT`) crash on the `ufm-anr-watchdog` background thread when writing ANR crash report JSON files on adopted storage volumes (`/mnt/expand/...`). Ensured parent directory creation (`file.parentFile?.mkdirs()`) before file writing, added fallback to `cacheDir` when `filesDir` is inaccessible or read-only, prevented `deleteReport` from deleting the parent `crash_reports` directory upon cleanup to avoid race conditions with subsequent writes, and isolated unexpected watchdog report writing errors with dedicated exception handling.
 - **Edge Panel & Floating Bar Duplicate Storages**: Fixed an issue where physical storages (such as Internal storage), configured network shares, and online cloud accounts were mentioned twice in the selectable "Available Tiles" list under Settings → Quick Access / Edge Panel → Manage Tiles (`FloatingBarManageActivity`). Added missing storage volume ID and mount path deduplication in `getConnectedStorages()` to handle duplicate volume reports on Samsung Galaxy and multi-profile devices, eliminated redundant network share and paired device iterations in `buildAllKnownTiles()`, and enforced unique tile ID constraints across tile management and quick access persistence.
 
 ## [2.1.6] — 2026-09-28

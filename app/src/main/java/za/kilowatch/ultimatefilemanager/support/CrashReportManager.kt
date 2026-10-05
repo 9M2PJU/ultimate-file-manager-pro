@@ -84,7 +84,11 @@ object CrashReportManager {
     /** Deletes all pending report files. */
     fun deleteAllPendingReports(app: Application) {
         try {
-            getReportDir(app).deleteRecursively()
+            getReportDir(app).listFiles()?.forEach { it.delete() }
+            val cacheReportDir = File(app.cacheDir, REPORT_DIR)
+            if (cacheReportDir.exists()) {
+                cacheReportDir.listFiles()?.forEach { it.delete() }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete report dir", e)
         }
@@ -698,24 +702,43 @@ object CrashReportManager {
         val watchdog = AnrWatchdogThread(app)
         watchdog.isDaemon = true
         watchdog.name = "ufm-anr-watchdog"
+        watchdog.setUncaughtExceptionHandler { thread, throwable ->
+            Log.e(TAG, "Uncaught exception in ${thread.name}", throwable)
+        }
         watchdog.start()
         Log.d(TAG, "ANR watchdog started (interval=${WATCHDOG_INTERVAL_MS}ms, timeout=${WATCHDOG_TIMEOUT_MS}ms)")
     }
 
     /** Returns true if any pending crash/ANR report file exists. */
-    fun hasPendingReport(app: Application): Boolean =
-        getReportDir(app).listFiles()?.any { it.extension == "json" } == true
+    fun hasPendingReport(app: Application): Boolean {
+        return try {
+            val primaryHas = getReportDir(app).listFiles()?.any { it.extension == "json" } == true
+            if (primaryHas) return true
+            val cacheDir = File(app.cacheDir, REPORT_DIR)
+            cacheDir.exists() && cacheDir.listFiles()?.any { it.extension == "json" } == true
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     /** Returns the first pending report file, or null if none exists. */
-    fun getPendingReportFile(app: Application): File? =
-        getReportDir(app).listFiles()?.firstOrNull { it.extension == "json" }
+    fun getPendingReportFile(app: Application): File? {
+        return try {
+            val primaryFile = getReportDir(app).listFiles()?.firstOrNull { it.extension == "json" }
+            if (primaryFile != null) return primaryFile
+            val cacheDir = File(app.cacheDir, REPORT_DIR)
+            if (cacheDir.exists()) {
+                cacheDir.listFiles()?.firstOrNull { it.extension == "json" }
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
 
-    /** Deletes a specific report file and removes the directory if empty. */
+    /** Deletes a specific report file. */
     fun deleteReport(file: File) {
         try {
             file.delete()
-            val parent = file.parentFile
-            if (parent?.listFiles()?.isEmpty() == true) parent.delete()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete report file", e)
         }
@@ -739,48 +762,75 @@ object CrashReportManager {
 
     // ── Private helpers ─────────────────────────────────────────────────────
 
-    private fun getReportDir(app: Application): File =
-        File(app.filesDir, REPORT_DIR).also { it.mkdirs() }
+    private fun getReportDir(app: Application): File {
+        val primaryDir = try {
+            File(app.filesDir, REPORT_DIR).also { it.mkdirs() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to create report dir in filesDir", e)
+            null
+        }
+        if (primaryDir != null && (primaryDir.exists() || primaryDir.mkdirs()) && primaryDir.canWrite()) {
+            return primaryDir
+        }
+        val fallbackDir = try {
+            File(app.cacheDir, REPORT_DIR).also { it.mkdirs() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to create fallback report dir in cacheDir", e)
+            null
+        }
+        if (fallbackDir != null && (fallbackDir.exists() || fallbackDir.mkdirs())) {
+            return fallbackDir
+        }
+        return primaryDir ?: File(app.filesDir, REPORT_DIR)
+    }
 
     private fun writeCrashReport(app: Application, thread: Thread, throwable: Throwable) {
-        val sw = StringWriter()
-        throwable.printStackTrace(PrintWriter(sw))
-        val stackTraceStr = sw.toString()
+        try {
+            val sw = StringWriter()
+            throwable.printStackTrace(PrintWriter(sw))
+            val stackTraceStr = sw.toString()
 
-        val fingerprint = generateFingerprint("crash", throwable.javaClass.name, stackTraceStr)
+            val fingerprint = generateFingerprint("crash", throwable.javaClass.name, stackTraceStr)
 
-        val json = buildReportJson(
-            type           = "crash",
-            threadName     = thread.name,
-            exceptionClass = throwable.javaClass.name,
-            message        = throwable.message ?: "",
-            stackTrace     = stackTraceStr,
-            anrReason      = null,
-            allThreads     = null,
-            fingerprint    = fingerprint
-        )
+            val json = buildReportJson(
+                type           = "crash",
+                threadName     = thread.name,
+                exceptionClass = throwable.javaClass.name,
+                message        = throwable.message ?: "",
+                stackTrace     = stackTraceStr,
+                anrReason      = null,
+                allThreads     = null,
+                fingerprint    = fingerprint
+            )
 
-        writeReportFile(app, "crash", json)
+            writeReportFile(app, "crash", json)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to write crash report", e)
+        }
     }
 
     fun writeAnrReport(app: Application, allThreadsText: String) {
-        val fingerprint = generateFingerprint("anr", "", allThreadsText)
-        if (isFingerprintReported(app, fingerprint)) {
-            Log.d(TAG, "ANR fingerprint '$fingerprint' already reported on version ${BuildConfig.VERSION_CODE} — skipping")
-            return
-        }
+        try {
+            val fingerprint = generateFingerprint("anr", "", allThreadsText)
+            if (isFingerprintReported(app, fingerprint)) {
+                Log.d(TAG, "ANR fingerprint '$fingerprint' already reported on version ${BuildConfig.VERSION_CODE} — skipping")
+                return
+            }
 
-        val json = buildReportJson(
-            type           = "anr",
-            threadName     = "main",
-            exceptionClass = "",
-            message        = "",
-            stackTrace     = "",
-            anrReason      = "Main thread blocked >${WATCHDOG_TIMEOUT_MS}ms",
-            allThreads     = allThreadsText,
-            fingerprint    = fingerprint
-        )
-        writeReportFile(app, "anr", json)
+            val json = buildReportJson(
+                type           = "anr",
+                threadName     = "main",
+                exceptionClass = "",
+                message        = "",
+                stackTrace     = "",
+                anrReason      = "Main thread blocked >${WATCHDOG_TIMEOUT_MS}ms",
+                allThreads     = allThreadsText,
+                fingerprint    = fingerprint
+            )
+            writeReportFile(app, "anr", json)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to write ANR report", e)
+        }
     }
 
     private fun buildReportJson(
@@ -811,10 +861,26 @@ object CrashReportManager {
     }
 
     private fun writeReportFile(app: Application, prefix: String, json: JSONObject) {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = File(getReportDir(app), "${prefix}_${timestamp}.json")
-        file.writeText(json.toString(2))
-        Log.d(TAG, "Report written: ${file.name}")
+        try {
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val filename = "${prefix}_${timestamp}.json"
+            val dir = getReportDir(app)
+            dir.mkdirs()
+            var file = File(dir, filename)
+            file.parentFile?.mkdirs()
+            try {
+                file.writeText(json.toString(2))
+            } catch (ioe: Exception) {
+                Log.w(TAG, "Failed to write to primary report file ${file.absolutePath}, attempting cache fallback", ioe)
+                val fallbackDir = File(app.cacheDir, REPORT_DIR).also { it.mkdirs() }
+                file = File(fallbackDir, filename)
+                file.parentFile?.mkdirs()
+                file.writeText(json.toString(2))
+            }
+            Log.d(TAG, "Report written: ${file.name}")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to write report file for $prefix", e)
+        }
     }
 
     // ── ANR Watchdog ────────────────────────────────────────────────────────
@@ -841,9 +907,10 @@ object CrashReportManager {
                     break
                 }
 
-                if (!isEnabled(app)) continue
+                try {
+                    if (!isEnabled(app)) continue
 
-                val blockedDuration = SystemClock.uptimeMillis() - lastTickTimestamp
+                    val blockedDuration = SystemClock.uptimeMillis() - lastTickTimestamp
                 if (blockedDuration >= WATCHDOG_TIMEOUT_MS) {
                     val mainThread = Looper.getMainLooper().thread
                     val mainStackTrace = mainThread.stackTrace
@@ -6052,7 +6119,10 @@ object CrashReportManager {
                         reportWrittenThisSession = false
                     }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error in watchdog check", t)
             }
+        }
             mainHandler.removeCallbacks(ticker)
         }
     }
