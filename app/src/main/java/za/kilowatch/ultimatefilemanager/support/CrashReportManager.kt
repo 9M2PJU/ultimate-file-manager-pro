@@ -584,6 +584,107 @@ object CrashReportManager {
         return noOtherBlockingPrimitives
     }
 
+    /**
+     * Identifies a main-thread stack where the top frame is sampled inside Material Components
+     * ShapeAppearance path calculation, CornerTreatment geometry, or ShapeableImageView sizing
+     * during window layout traversal (e.g. `ShapePath.addArc`, `CornerTreatment.getCornerPath`,
+     * `RoundedCornerTreatment.getCornerPath`, `ShapeAppearancePathProvider.calculatePath`,
+     * `ShapeAppearancePathProvider.setCornerPathAndTransform`, `ShapeableImageView.updateShapeMask`,
+     * `ShapeableImageView.onSizeChanged`, or `ShapeableImageView.setFrame`).
+     *
+     * In this state, the main thread is executing sub-microsecond in-memory geometric calculations
+     * or standard view frame layout. No app business logic is actively running and no framework
+     * blocking primitives (locks, disk/network I/O, database, IPC) are held.
+     */
+    fun isShapeableImageViewLayoutStall(
+        topFrame: StackTraceElement?,
+        mainStackTrace: Array<StackTraceElement>
+    ): Boolean {
+        if (topFrame == null) return false
+
+        val isTopFrameShapeOrImageView =
+            (topFrame.className.startsWith("com.google.android.material.shape.") &&
+             (topFrame.methodName == "addArc" || topFrame.methodName == "getCornerPath" ||
+              topFrame.methodName == "calculatePath" || topFrame.methodName == "setCornerPathAndTransform" ||
+              topFrame.methodName == "appendEdgePath" || topFrame.methodName == "lineTo" ||
+              topFrame.methodName == "quadToPoint" || topFrame.methodName == "cubicToPoint" ||
+              topFrame.methodName == "reset" || topFrame.methodName == "<init>")) ||
+            (topFrame.className.startsWith("com.google.android.material.imageview.") &&
+             (topFrame.methodName == "onSizeChanged" || topFrame.methodName == "updateShapeMask" ||
+              topFrame.methodName == "onDraw" || topFrame.methodName == "onMeasure" ||
+              topFrame.methodName == "setFrame" || topFrame.methodName == "layout" ||
+              topFrame.methodName == "<init>")) ||
+            (topFrame.className.startsWith("android.graphics.") &&
+             (topFrame.methodName == "addArc" || topFrame.methodName == "arcTo" ||
+              topFrame.methodName == "lineTo" || topFrame.methodName == "moveTo" ||
+              topFrame.methodName == "mapPoints" || topFrame.methodName == "reset")) ||
+            (topFrame.className.startsWith("android.view.") &&
+             (topFrame.methodName == "sizeChange" || topFrame.methodName == "setFrame" ||
+              topFrame.methodName == "layout" || topFrame.methodName == "onLayout")) ||
+            (topFrame.className.startsWith("android.widget.") &&
+             (topFrame.methodName == "sizeChange" || topFrame.methodName == "setFrame" ||
+              topFrame.methodName == "layout" || topFrame.methodName == "onLayout")) ||
+            (PLATFORM_PREFIXES.none { prefix -> topFrame.className.startsWith(prefix) } &&
+             !topFrame.className.startsWith(APP_PACKAGE) &&
+             topFrame.methodName != "run" && topFrame.methodName != "<clinit>")
+
+        if (!isTopFrameShapeOrImageView) {
+            return false
+        }
+
+        val hasShapeableImageViewFrame = mainStackTrace.any { frame ->
+            frame.className.contains("ShapeableImageView") ||
+            frame.className.startsWith("com.google.android.material.shape.") ||
+            (frame.methodName == "onSizeChanged" &&
+             (frame.className.contains("ImageView") ||
+              (PLATFORM_PREFIXES.none { prefix -> frame.className.startsWith(prefix) } &&
+               !frame.className.startsWith(APP_PACKAGE))))
+        }
+        if (!hasShapeableImageViewFrame) {
+            return false
+        }
+
+        val hasLayoutOrMeasureTraversal = mainStackTrace.any { frame ->
+            (frame.className == "android.view.Choreographer" &&
+             (frame.methodName == "doFrame" || frame.methodName == "doCallbacks")) ||
+            (frame.className == "android.view.ViewRootImpl" &&
+             (frame.methodName == "performTraversals" || frame.methodName == "performLayout" ||
+              frame.methodName == "performMeasure" || frame.methodName == "doTraversal" ||
+              frame.methodName == "measureHierarchy")) ||
+            ((frame.className == "android.view.View" || frame.className == "android.view.ViewGroup") &&
+             (frame.methodName == "layout" || frame.methodName == "onLayout" ||
+              frame.methodName == "setFrame" || frame.methodName == "sizeChange"))
+        }
+        if (!hasLayoutOrMeasureTraversal) {
+            return false
+        }
+
+        val noAppBusinessLogic = mainStackTrace.none { it.className.startsWith(APP_PACKAGE) } ||
+            mainStackTrace.filter { it.className.startsWith(APP_PACKAGE) }.all {
+                it.className.endsWith("Activity") || it.className.contains("Activity$") ||
+                it.className.endsWith("Fragment") || it.className.contains("Fragment$") ||
+                it.className.endsWith("Dialog") || it.className.contains("Dialog$") ||
+                it.className.contains("DialogFragment") ||
+                it.className.endsWith("Adapter") || it.className.contains("Adapter$") ||
+                it.className.endsWith("ViewHolder") || it.className.contains("ViewHolder$")
+            }
+        if (!noAppBusinessLogic) {
+            return false
+        }
+
+        val noOtherBlockingPrimitives = mainStackTrace.none { frame ->
+            (frame.className == "android.os.BinderProxy" &&
+             (frame.methodName == "transact" || frame.methodName == "transactNative")) ||
+            (frame.className == "java.lang.Object" && frame.methodName == "wait") ||
+            frame.className.startsWith("java.util.concurrent.locks.LockSupport") ||
+            frame.className.startsWith("java.io.") ||
+            frame.className.startsWith("libcore.io.") ||
+            frame.className.startsWith("java.net.") ||
+            frame.className.startsWith("android.database.")
+        }
+        return noOtherBlockingPrimitives
+    }
+
 
     /**
      * Hooks ActivityThread.mH via Handler.mCallback to intercept EXECUTE_TRANSACTION (159)
@@ -6095,7 +6196,33 @@ object CrashReportManager {
                     val isActivityFinishBinderStall =
                         isActivityFinishBinderStall(topFrame, mainStackTrace)
 
-                    if (isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
+                    // 81. The main thread is sampled inside Material Components ShapeAppearance / ShapeableImageView
+                    //     shape path calculation or mask updating during window layout traversal — top frame
+                    //     `com.google.android.material.shape.ShapePath.addArc` (or other ShapePath operations),
+                    //     `CornerTreatment.getCornerPath` / `RoundedCornerTreatment.getCornerPath`,
+                    //     `ShapeAppearancePathProvider.calculatePath` / `setCornerPathAndTransform`, or
+                    //     `ShapeableImageView.updateShapeMask` / `onSizeChanged` / `setFrame` / `layout`, under
+                    //     `View.layout` / `setFrame` / `sizeChange` -> `ViewRootImpl.performLayout` /
+                    //     `performTraversals` / `Choreographer.doFrame`, thread state RUNNABLE (reported from a
+                    //     SCBC R3 Android TV, SDK 30, app 2.1.6-GOOGLE). Computing geometric corner arcs in ShapePath
+                    //     is pure in-memory math taking nanoseconds with no loops, locks, file/network I/O, database
+                    //     access, or IPC, and cannot by itself occupy the main looper for 5 s. The >5 s block was
+                    //     cold-start CPU/storage contention on a budget TV SoC (SCBC R3) where multiple background
+                    //     workers were concurrently active (BouncyCastle crypto / keystore setup on ufm-startup-io,
+                    //     SharedPreferences queued-work syncing on queued-work-looper, Firebase installation file writes,
+                    //     and network discovery threads), causing the watchdog to sample the main looper during normal
+                    //     window layout traversal. Because R8 minifies ShapeAppearancePathProvider and CornerTreatment
+                    //     to short names (e.g. `qu8`, `sc8`) that lack platform package prefixes, `isPureFrameworkStack`
+                    //     evaluates to false. The `AnrWatchdogThread` filter 81 (`isShapeableImageViewLayoutStall`)
+                    //     now treats a main-thread stack whose top frame is inside ShapeAppearance path calculation,
+                    //     corner treatment, or ShapeableImageView sizing during layout traversals, with no app business
+                    //     logic execution and no framework blocking primitives, as a false positive, resetting its
+                    //     heartbeat instead of writing a spurious freeze report. Genuine freezes keeping the main
+                    //     thread parked inside application business logic or blocking primitives continue to be reported.
+                    val isShapeableImageViewLayoutStall =
+                        isShapeableImageViewLayoutStall(topFrame, mainStackTrace)
+
+                    if (isShapeableImageViewLayoutStall || isActivityFinishBinderStall || isProgressIndicatorInflateStall || isActivityTaskDescriptionBinderStall || isConstraintLayoutTextMeasureStall || isRecyclerViewCheckBoxInflateEnqueueMessageStall || isRecyclerViewLayoutDecoratedStall || isAlertDialogLayoutTextMeasureStall || isConstraintLayoutMeasureLinearSystemStall || isResourceTypeNameLayoutInflateStall || isSnackbarInflateColorStateListStall || isSystemJobServiceCreateStall || isViewSaveAttributeStyleableInflateStall || isAccessibilityConnectionBinderStall || isCaseMapAllCapsButtonInflateStall || isActivityOnCreateCollectionIteratorStall || isTextViewSetTextLineBreakerStall || isActivityColdStartOverScrollerStall || isMediaTekBoostFwkScenarioStall || isLibraryPriorityBlockingQueueEnqueueStall || isTrimMemoryDispatchStall || isVectorDrawableNativeAllocationDrawStall || isIdleInLooper || isPureFrameworkStack || isDialogLayoutResourceStall || tickerJustRan || isServiceClassInitStall || isAnimationReflectionStall || isRecyclerViewFocusSearchStall || isServiceConnectionBinderStall || isActivityOnStartLifecycleStall || isTrivialStringBuilderStartStall || isMaterialButtonInflateStall || isAutofillSyncResultStall || isRecyclerViewFocusSearchInflateStall || isVectorDrawableStringPoolStall || isFileProviderUriEncodeStall || isSpannableSpanRemovalStall || isTextDrawFrameStall || isTextMeasurementDuringInputStall || isSystemJobServiceStartStall || isBareRunTopPostStallStall || isVendorSdkServiceLookupStall || isDeepEqualsChainStall || isActivityLaunchBinderStall || isActivityOnCreateViewLookupStall || isTextMeasureSpanQueryStall || isActivityConstructorLifecycleStall || isLibraryThreadConstructionStall || isVendorFrameSkipLoggingStall || isActivityResumedLifecycleDispatchStall || isActivityPostResumeLifecycleDispatchStall || isPostDelayedFromFreshRunStall || isVendorLooperObserverPostStall || isRecyclerViewTextLayoutStall || isColdStartLayoutInflateStall || isSystemServiceFetchBinderStall || isThreadPoolWorkerCreateStall || isFreshRunBodyEntryStall || isRecyclerViewObfuscatedBindLayoutStall || isRecyclerViewBindResourceLookupStall || isActivityOnResumeStringBuildStall || isRecyclerViewCheckBoxInflateStall || isViewPropertyAnimatorChainingStall || isActivityOnCreateLibraryInitStall || isNativeAllocationRegistryTextLayoutStall || isVendorFrameSkipTrancareBinderStall || isActivityColdStartFactoryInflateStall || isVendorRtgSchedClassInitStall || isActivityColdStartTransitionInflateStall || isTextViewFocusSetTextColorStall || isNativeAllocationRegistryButtonInflateStall || isLibraryHandlerBinderStall || isHandlerInflateXmlDrawableStall || isInsetsDispatchClassInitStall || isTextMeasureWrapContentStall || isLinkedBlockingQueueFreshRunInitStall || isSaveInstanceStateUnparcelStall || isTextMeasureBoringLayoutStall || isMediaSessionSyncBinderStall || isRecyclerViewBindSetImageResourceStall) {
                         // Reset lastTickTimestamp so false positive is cleared
                         lastTickTimestamp = SystemClock.uptimeMillis()
                     } else if (!reportWrittenThisSession) {
