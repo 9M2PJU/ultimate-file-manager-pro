@@ -161,3 +161,12 @@ UFM-Windows/src-tauri/gen/
 
 # Local dev overrides
 UFM-Windows/*.local
+
+# ── UFM-Linux Companion (Tauri / Rust / Node) ─────────────────
+UFM-Linux/src-tauri/target/
+UFM-Linux/src-tauri/.cargo/
+UFM-Linux/node_modules/
+UFM-Linux/dist/
+UFM-Linux/dist-ssr/
+UFM-Linux/src-tauri/gen/
+UFM-Linux/*.local

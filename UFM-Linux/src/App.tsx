@@ -1,0 +1,602 @@
+import { useState, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { Smartphone, Tv, Link, Download, Upload, AlertCircle, UploadCloud } from "lucide-react";
+import { FilePane } from "./components/FilePane";
+import { DeviceSelector } from "./components/DeviceSelector";
+import { ProgressBar } from "./components/ProgressBar";
+import { useUfmApi, UfmFile } from "./hooks/useUfmApi";
+import { languagesList } from "./hooks/translations";
+import logo from "./assets/logo.png";
+import "./App.css";
+
+function App() {
+  const ufm = useUfmApi();
+  const sideloadInputRef = useRef<HTMLInputElement>(null);
+  const { lang, handleLanguageChange, t, authExpiredDevice, setAuthExpiredDevice } = ufm;
+
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Automatically open device selector on auth expiration
+  useEffect(() => {
+    if (authExpiredDevice) {
+      setShowDeviceSelector(true);
+    }
+  }, [authExpiredDevice]);
+
+  // Dialog state
+  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
+
+  // Local Filesystem state
+  const [localRoots, setLocalRoots] = useState<string[]>([]);
+  const [localPath, setLocalPath] = useState<string>("");
+  const [localFiles, setLocalFiles] = useState<UfmFile[]>([]);
+  const [isLocalLoading, setIsLocalLoading] = useState(false);
+  const [selectedLocalFiles, setSelectedLocalFiles] = useState<UfmFile[]>([]);
+
+  // Remote Filesystem state
+  const [remoteRoots, setRemoteRoots] = useState<string[]>([]);
+  const [remotePath, setRemotePath] = useState<string>("");
+  const [remoteFiles, setRemoteFiles] = useState<UfmFile[]>([]);
+  const [isRemoteLoading, setIsRemoteLoading] = useState(false);
+  const [selectedRemoteFiles, setSelectedRemoteFiles] = useState<UfmFile[]>([]);
+
+  // Transfer Progress State
+  const [transferLabel, setTransferLabel] = useState("");
+  const [transferProgress, setTransferProgress] = useState(0);
+  const [isTransferActive, setIsTransferActive] = useState(false);
+
+  // 1. Initialize Local Filesystem
+  useEffect(() => {
+    initLocalFs();
+  }, []);
+
+  // Listen to transfer progress from Rust backend
+  useEffect(() => {
+    let unlisten: any;
+    listen<number>("transfer-progress", (event) => {
+      setTransferProgress(event.payload);
+    }).then(fn => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  const initLocalFs = async () => {
+    try {
+      const roots = await invoke<string[]>("get_system_roots");
+      setLocalRoots(roots);
+      if (roots.length > 0) {
+        const saved = localStorage.getItem("ufm_last_local_path");
+        const defaultPath = roots[0];
+        const pathToLoad = saved || defaultPath;
+        setLocalPath(pathToLoad);
+        loadLocalDir(pathToLoad, defaultPath);
+      }
+    } catch (e) {
+      console.error("Failed to init local filesystem:", e);
+    }
+  };
+
+  const loadLocalDir = async (path: string, fallbackPath?: string) => {
+    setIsLocalLoading(true);
+    setSelectedLocalFiles([]);
+    try {
+      const list = await invoke<any[]>("list_local_directory", { pathStr: path });
+      setLocalFiles(list.map(f => ({
+        name: f.name,
+        path: f.path,
+        is_dir: f.is_dir,
+        size: f.size,
+        modified: f.modified
+      })));
+      setLocalPath(path);
+      localStorage.setItem("ufm_last_local_path", path);
+    } catch (e) {
+      console.error("Failed to load local directory:", e);
+      if (fallbackPath) {
+        loadLocalDir(fallbackPath);
+      } else if (localRoots.length > 0 && path !== localRoots[0]) {
+        loadLocalDir(localRoots[0]);
+      }
+    } finally {
+      setIsLocalLoading(false);
+    }
+  };
+
+  // 2. Refresh Remote volumes when connection/active device changes
+  useEffect(() => {
+    if (ufm.activeDevice) {
+      initRemoteFs();
+    } else {
+      setRemoteFiles([]);
+      setRemoteRoots([]);
+      setRemotePath("");
+      setSelectedRemoteFiles([]);
+    }
+  }, [ufm.activeDevice]);
+
+  const initRemoteFs = async () => {
+    if (!ufm.activeDevice) return;
+    setIsRemoteLoading(true);
+    try {
+      const volumes = await ufm.getVolumes();
+      if (volumes && volumes.length > 0) {
+        const paths = volumes.map(v => v.path);
+        setRemoteRoots(paths);
+        
+        const defaultPath = paths[0];
+        const savedKey = `ufm_last_remote_path_${ufm.activeDevice.id}`;
+        const saved = localStorage.getItem(savedKey);
+        const pathToLoad = saved || defaultPath;
+        
+        setRemotePath(pathToLoad);
+        loadRemoteDir(pathToLoad, defaultPath);
+      } else {
+        const defaultPath = "/storage/emulated/0";
+        setRemoteRoots([defaultPath]);
+        
+        const savedKey = `ufm_last_remote_path_${ufm.activeDevice.id}`;
+        const saved = localStorage.getItem(savedKey);
+        const pathToLoad = saved || defaultPath;
+        
+        setRemotePath(pathToLoad);
+        loadRemoteDir(pathToLoad, defaultPath);
+      }
+    } catch (e) {
+      console.error("Failed to fetch remote volumes:", e);
+    } finally {
+      setIsRemoteLoading(false);
+    }
+  };
+
+  const loadRemoteDir = async (path: string, fallbackPath?: string) => {
+    if (!ufm.activeDevice) return;
+    setIsRemoteLoading(true);
+    setSelectedRemoteFiles([]);
+    try {
+      const files = await ufm.browse(path);
+      setRemoteFiles(files);
+      setRemotePath(path);
+      const savedKey = `ufm_last_remote_path_${ufm.activeDevice.id}`;
+      localStorage.setItem(savedKey, path);
+    } catch (e) {
+      console.error("Failed to read remote directory:", e);
+      if (fallbackPath) {
+        loadRemoteDir(fallbackPath);
+      } else if (remoteRoots.length > 0 && path !== remoteRoots[0]) {
+        loadRemoteDir(remoteRoots[0]);
+      }
+    } finally {
+      setIsRemoteLoading(false);
+    }
+  };
+
+  // --- File Actions ---
+
+  const handleMkdir = async (isRemoteFs: boolean, currentPath: string, name: string) => {
+    if (isRemoteFs) {
+      const success = await ufm.mkdir(currentPath, name);
+      if (success) loadRemoteDir(currentPath);
+    }
+  };
+
+  const handleDelete = async (isRemoteFs: boolean, paths: string[]) => {
+    if (paths.length === 0) return;
+    const label = paths.length === 1 ? "this item" : `these ${paths.length} items`;
+    if (confirm(`Are you sure you want to delete ${label}?`)) {
+      if (isRemoteFs) {
+        let successCount = 0;
+        for (const path of paths) {
+          const success = await ufm.deletePath(path);
+          if (success) successCount++;
+        }
+        loadRemoteDir(remotePath);
+      }
+    }
+  };
+
+  // --- Sideload Action ---
+  const handleSideload = async (localFilePath: string, filename: string, isXapk: boolean) => {
+    if (!ufm.activeDevice) return;
+
+    setIsTransferActive(true);
+    setTransferLabel(`Uploading & installing ${filename}...`);
+    setTransferProgress(20);
+
+    const success = await ufm.sideloadPackage(localFilePath, filename, isXapk, (progress) => {
+      setTransferProgress(progress);
+    });
+
+    if (success) {
+      setTransferLabel("Installation request sent successfully!");
+      setTimeout(() => setIsTransferActive(false), 3000);
+    } else {
+      setTransferLabel("Installation failed. View device screen for details.");
+      setTimeout(() => setIsTransferActive(false), 5000);
+    }
+  };
+
+  // --- Copy File Actions (Upload/Download) ---
+  const handleUpload = async () => {
+    if (selectedLocalFiles.length === 0 || !ufm.activeDevice) return;
+
+    setIsTransferActive(true);
+    setTransferProgress(0);
+
+    let successCount = 0;
+    for (let i = 0; i < selectedLocalFiles.length; i++) {
+      const file = selectedLocalFiles[i];
+      setTransferLabel(`Uploading ${file.name} (${i + 1}/${selectedLocalFiles.length})...`);
+      const success = await ufm.uploadLocalFile(
+        file.path,
+        remotePath,
+        file.is_dir
+      );
+      if (success) successCount++;
+    }
+
+    if (successCount === selectedLocalFiles.length) {
+      setTransferLabel("Upload complete!");
+    } else {
+      setTransferLabel(`Uploaded ${successCount} of ${selectedLocalFiles.length} successfully.`);
+    }
+
+    loadRemoteDir(remotePath);
+    setTimeout(() => setIsTransferActive(false), 2000);
+  };
+
+  const handleDownload = async () => {
+    if (selectedRemoteFiles.length === 0 || !ufm.activeDevice) return;
+
+    setIsTransferActive(true);
+    setTransferProgress(0);
+
+    const isWindows = localPath.includes("\\");
+    const separator = isWindows ? "\\" : "/";
+
+    let successCount = 0;
+    for (let i = 0; i < selectedRemoteFiles.length; i++) {
+      const file = selectedRemoteFiles[i];
+      setTransferLabel(`Downloading ${file.name} (${i + 1}/${selectedRemoteFiles.length})...`);
+      
+      const destPath = localPath.endsWith(separator) 
+        ? localPath + file.name 
+        : localPath + separator + file.name;
+
+      const success = await ufm.downloadRemoteFile(
+        file.path, 
+        destPath,
+        file.is_dir
+      );
+      if (success) successCount++;
+    }
+
+    if (successCount === selectedRemoteFiles.length) {
+      setTransferLabel("Download complete!");
+    } else {
+      setTransferLabel(`Downloaded ${successCount} of ${selectedRemoteFiles.length} successfully.`);
+    }
+
+    loadLocalDir(localPath);
+    setTimeout(() => setIsTransferActive(false), 2000);
+  };
+
+  return (
+    <div className="app-container" style={{ height: "100vh" }}>
+      {/* Header */}
+      <header className="app-header glass-panel" data-tauri-drag-region>
+        <div className="brand-section" data-tauri-drag-region>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <img 
+              src={logo} 
+              alt="UFM Logo" 
+              style={{ width: "28px", height: "28px", objectFit: "contain", borderRadius: "6px" }} 
+            />
+            <span className="app-title">{t.app_title}</span>
+          </div>
+        </div>
+
+        <div className="connection-section" style={{ display: "flex", alignItems: "center" }}>
+          <div ref={dropdownRef} style={{ position: "relative", marginRight: "12px" }}>
+            <button
+              onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+              className="btn-secondary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 12px",
+                fontSize: "0.85rem",
+                borderRadius: "var(--radius-sm)",
+                height: "36px",
+                cursor: "pointer",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text)"
+              }}
+            >
+              <img 
+                src={languagesList.find(l => l.code === lang)?.flag} 
+                alt="" 
+                style={{ width: "20px", height: "14px", objectFit: "contain", borderRadius: "1px" }} 
+              />
+              <span>{languagesList.find(l => l.code === lang)?.name}</span>
+            </button>
+            
+            {langDropdownOpen && (
+              <div 
+                style={{
+                  position: "absolute",
+                  top: "42px",
+                  right: 0,
+                  width: "180px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--glass-border)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-lg)",
+                  zIndex: 1000,
+                  maxHeight: "250px",
+                  overflowY: "auto",
+                  padding: "4px 0"
+                }}
+              >
+                {languagesList.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => {
+                      handleLanguageChange(l.code);
+                      setLangDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "8px 12px",
+                      background: lang === l.code ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                      border: "none",
+                      color: "white",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "0.85rem"
+                    }}
+                  >
+                    <img 
+                      src={l.flag} 
+                      alt="" 
+                      style={{ width: "20px", height: "14px", objectFit: "contain", borderRadius: "1px" }} 
+                    />
+                    <span>{l.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {ufm.activeDevice ? (
+            <div className="device-status">
+              <span className="status-dot connected"></span>
+              {ufm.activeDevice.is_tv ? <Tv style={{ width: 14, height: 14 }} /> : <Smartphone style={{ width: 14, height: 14 }} />}
+              <span>{ufm.activeDevice.name} ({ufm.activeDevice.ip})</span>
+            </div>
+          ) : (
+            <div className="device-status">
+              <span className="status-dot"></span>
+              <span>{t.disconnected}</span>
+            </div>
+          )}
+
+          <button 
+            className="btn-primary" 
+            onClick={() => {
+              ufm.searchDevices();
+              setShowDeviceSelector(true);
+            }}
+          >
+            <Link style={{ width: 16, height: 16 }} />
+            {t.connect_device}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Filesystem Panels */}
+      <div className="panes-container">
+        {/* Local PC Pane */}
+        <FilePane
+          title={t.local_storage}
+          isRemote={false}
+          files={localFiles}
+          currentPath={localPath}
+          roots={localRoots}
+          isLoading={isLocalLoading}
+          onNavigate={loadLocalDir}
+          onRefresh={() => loadLocalDir(localPath)}
+          onMkdir={() => {}} // Local mkdir can be implemented locally or omitted for read-only local safety
+          onDelete={() => {}} // Read-only local filesystem protection in MVP
+          onFileSelect={setSelectedLocalFiles}
+          selectedFiles={selectedLocalFiles}
+          t={t}
+        />
+
+        {/* Transfer Button Column */}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "16px" }}>
+          <button 
+            className="btn-primary" 
+            onClick={handleUpload}
+            disabled={selectedLocalFiles.length === 0 || !ufm.activeDevice}
+            style={{ 
+              borderRadius: "50%", width: "48px", height: "48px", 
+              justifyContent: "center", padding: 0,
+              opacity: (selectedLocalFiles.length === 0 || !ufm.activeDevice) ? 0.4 : 1
+            }}
+            title="Upload selected PC file(s) to Android"
+          >
+            <Upload style={{ width: 20, height: 20 }} />
+          </button>
+
+          <input
+            type="file"
+            ref={sideloadInputRef}
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files && files.length > 0) {
+                const file = files[0];
+                const name = file.name;
+                const isXapk = name.toLowerCase().endsWith(".xapk");
+                const path = (file as any).path;
+                if (path) {
+                  handleSideload(path, name, isXapk);
+                } else {
+                  alert("Could not determine absolute file path.");
+                }
+              }
+            }}
+            accept=".apk,.xapk"
+            style={{ display: "none" }}
+          />
+          <button 
+            className="btn-primary" 
+            onClick={() => sideloadInputRef.current?.click()}
+            disabled={!ufm.activeDevice}
+            style={{ 
+              borderRadius: "50%", width: "48px", height: "48px", 
+              justifyContent: "center", padding: 0,
+              opacity: (!ufm.activeDevice) ? 0.4 : 1
+            }}
+            title="Sideload APK/XAPK to Android"
+          >
+            <UploadCloud style={{ width: 20, height: 20 }} />
+          </button>
+
+          <button 
+            className="btn-primary" 
+            onClick={handleDownload}
+            disabled={selectedRemoteFiles.length === 0 || !ufm.activeDevice}
+            style={{ 
+              borderRadius: "50%", width: "48px", height: "48px", 
+              justifyContent: "center", padding: 0,
+              opacity: (selectedRemoteFiles.length === 0 || !ufm.activeDevice) ? 0.4 : 1
+            }}
+            title="Download selected Android file(s) to PC"
+          >
+            <Download style={{ width: 20, height: 20 }} />
+          </button>
+        </div>
+
+        {/* Remote Android / TV Pane */}
+        {ufm.activeDevice ? (
+          <FilePane
+            title={t.remote_storage}
+            isRemote={true}
+            isTv={ufm.activeDevice.is_tv}
+            files={remoteFiles}
+            currentPath={remotePath}
+            roots={remoteRoots}
+            isLoading={isRemoteLoading}
+            onNavigate={loadRemoteDir}
+            onRefresh={() => loadRemoteDir(remotePath)}
+            onMkdir={(path, name) => handleMkdir(true, path, name)}
+            onDelete={(paths) => handleDelete(true, paths)}
+            onFileSelect={setSelectedRemoteFiles}
+            selectedFiles={selectedRemoteFiles}
+            t={t}
+          />
+        ) : (
+          <div className="file-pane glass-panel" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: "450px", textAlign: "center" }}>
+              <Smartphone style={{ width: 48, height: 48, color: "var(--text-hint)", marginBottom: "16px" }} />
+              <span style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: "12px", color: "var(--text)" }}>{t.no_device_connected}</span>
+              
+              <div style={{ 
+                textAlign: "left", 
+                backgroundColor: "rgba(255, 255, 255, 0.02)", 
+                border: "1px solid var(--glass-border)", 
+                borderRadius: "var(--radius-sm)", 
+                padding: "16px", 
+                marginTop: "8px",
+                marginBottom: "16px",
+                fontSize: "0.85rem",
+                lineHeight: "1.6",
+                color: "var(--text-sec)"
+              }}>
+                <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "10px" }}>{t.to_connect_device}</div>
+                <ol style={{ margin: 0, paddingLeft: "1.2rem" }}>
+                  <li style={{ marginBottom: "6px" }}>{t.open_ufm_pro}</li>
+                  <li style={{ marginBottom: "6px" }}>{t.go_to_remote_manage}</li>
+                  <li style={{ marginBottom: "6px" }}>{t.select_windows_app}</li>
+                  <li>{t.follow_instructions}</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Progress Widget */}
+      <ProgressBar 
+        label={transferLabel} 
+        progress={transferProgress} 
+        visible={isTransferActive} 
+      />
+
+
+      {/* Device Selector Modal */}
+      {showDeviceSelector && (
+        <DeviceSelector
+          discovered={ufm.discoveredDevices}
+          paired={ufm.pairedDevices}
+          active={ufm.activeDevice}
+          isSearching={ufm.isSearching}
+          isConnecting={ufm.isConnecting}
+          onSearch={ufm.searchDevices}
+          onSelect={ufm.selectDevice}
+          onPair={ufm.pairDevice}
+          onUnpair={ufm.unpairDevice}
+          onClose={() => {
+            setShowDeviceSelector(false);
+            setAuthExpiredDevice(null);
+          }}
+          t={t}
+          initialPairDevice={authExpiredDevice}
+        />
+      )}
+
+      {/* Global Error Banner */}
+      {ufm.error && ufm.activeDevice && (
+        <div style={{
+          position: "fixed", bottom: "24px", left: "24px",
+          background: "rgba(239, 68, 68, 0.95)", color: "white",
+          padding: "12px 20px", borderRadius: "8px", display: "flex",
+          alignItems: "center", gap: "10px", fontSize: "0.8rem",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.3)", zIndex: 5000
+        }}>
+          <AlertCircle style={{ width: 16, height: 16 }} />
+          <span>{ufm.error}</span>
+          <button 
+            onClick={() => ufm.setError(null)}
+            style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", marginLeft: "10px" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

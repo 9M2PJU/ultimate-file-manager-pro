@@ -1,122 +1,172 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    Folder Sync TV Row Item (TV Standard - Compact ~84dp)
+-->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="10dp"
-    android:focusable="true"
+    android:layout_marginBottom="10dp"
     android:clickable="true"
-    android:background="@drawable/selector_tv_card"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
     app:cardBackgroundColor="@color/tv_glass_white_10"
-    app:strokeColor="@color/tv_glass_border"
-    app:strokeWidth="1dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
+    app:cardElevation="0dp"
+    app:strokeColor="@color/tv_glass_border"
+    app:strokeWidth="1dp">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="20dp">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
 
-        <ImageView
-            android:id="@+id/iconSync"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:padding="10dp"
-            android:src="@drawable/ic_sync"
-            android:background="@drawable/bg_btn_icon_frosted"
-            app:tint="@color/tv_text_primary"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:importantForAccessibility="no" />
+        <!-- 44dp Frosted Sync Icon Container -->
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_btn_icon_frosted">
 
-        <TextView
-            android:id="@+id/txtName"
+            <ImageView
+                android:id="@+id/iconSync"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_sync"
+                app:tint="@color/tv_accent"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <!-- Main Info Column -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
             android:layout_marginStart="16dp"
-            android:ellipsize="end"
-            android:fontFamily="sans-serif-black"
-            android:maxLines="1"
-            android:textColor="@color/tv_text_primary"
-            android:textSize="20sp"
-            app:layout_constraintEnd_toStartOf="@+id/txtStatus"
-            app:layout_constraintStart_toEndOf="@+id/iconSync"
-            app:layout_constraintTop_toTopOf="@+id/iconSync"
-            tools:text="Camera Upload Sync" />
+            android:layout_marginEnd="12dp">
 
-        <TextView
-            android:id="@+id/txtStatus"
+            <!-- Title & Status Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/txtName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    tools:text="Camera Upload Sync" />
+
+                <TextView
+                    android:id="@+id/txtInterval"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_status_badge_accent"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="@color/tv_accent"
+                    android:textSize="11.5sp"
+                    android:fontFamily="sans-serif-medium"
+                    tools:text="Every 1h" />
+
+                <TextView
+                    android:id="@+id/txtStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:textColor="@color/tv_accent"
+                    android:textSize="11.5sp"
+                    android:fontFamily="sans-serif-bold"
+                    tools:text="Active" />
+            </LinearLayout>
+
+            <!-- Route Row: Source ➔ Dest -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/txtSource"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="middle"
+                    android:drawablePadding="6dp"
+                    app:drawableStartCompat="@drawable/ic_phone"
+                    app:drawableTint="@color/tv_text_secondary"
+                    tools:text="DCIM/Camera" />
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:rotation="180"
+                    android:alpha="0.6"
+                    app:tint="@color/tv_text_secondary"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/txtDest"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="middle"
+                    android:drawablePadding="6dp"
+                    app:drawableStartCompat="@drawable/ic_network"
+                    app:drawableTint="@color/tv_text_secondary"
+                    tools:text="NAS Media / Backups" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Right Column: Last Sync + Chevron -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/tv_accent"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/txtName"
-            tools:text="Active" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/txtInterval"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:textColor="@color/tv_accent"
-            android:textSize="14sp"
-            android:fontFamily="sans-serif-medium"
-            app:layout_constraintTop_toBottomOf="@+id/txtName"
-            app:layout_constraintStart_toStartOf="@+id/txtName"
-            tools:text="Every 1h" />
+            <TextView
+                android:id="@+id/txtLastSync"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/tv_text_hint"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:layout_marginEnd="12dp"
+                tools:text="Last sync: 2 hours ago" />
 
-        <TextView
-            android:id="@+id/txtSource"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:drawablePadding="10dp"
-            android:ellipsize="middle"
-            android:maxLines="1"
-            android:textColor="@color/tv_text_secondary"
-            android:textSize="15sp"
-            app:drawableStartCompat="@drawable/ic_phone"
-            app:drawableTint="@color/tv_text_secondary"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/txtInterval"
-            tools:text="DCIM/Camera" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_arrow_back"
+                android:rotation="180"
+                android:alpha="0.5"
+                app:tint="@color/tv_text_secondary"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtDest"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:drawablePadding="10dp"
-            android:ellipsize="middle"
-            android:maxLines="1"
-            android:textColor="@color/tv_text_secondary"
-            android:textSize="15sp"
-            app:drawableStartCompat="@drawable/ic_network"
-            app:drawableTint="@color/tv_text_secondary"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/txtSource"
-            tools:text="NAS Media / Backups" />
-
-        <TextView
-            android:id="@+id/txtLastSync"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/tv_text_hint"
-            android:textSize="13sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/txtDest"
-            tools:text="Last sync: 2 hours ago" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

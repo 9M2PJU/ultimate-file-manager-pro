@@ -774,7 +774,7 @@ class FileBrowserActivity : AppCompatActivity(), VolumeEjectHost {
         if (!::fabPaste.isInitialized) return
         val isLeftHanded = za.kilowatch.ultimatefilemanager.settings.LeftHandedFabPreferenceManager.isLeftHanded(this)
         val isToolsVisible = fabTools?.visibility == View.VISIBLE
-        val isSelectionMode = fileAdapter.isSelectionMode
+        val isSelectionMode = if (::fileAdapter.isInitialized) fileAdapter.isSelectionMode else false
         val density = resources.displayMetrics.density
         val baseMargin = (16 * density).toInt()
         val selectionLeftMargin = (56 * density).toInt()

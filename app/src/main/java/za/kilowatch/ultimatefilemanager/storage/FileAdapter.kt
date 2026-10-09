@@ -78,9 +78,17 @@ class FileAdapter(
 
         fun getCachedPath(path: String): String? = thumbnailPathCache[path]
 
-        fun getVideoThumbnail(path: String): android.graphics.Bitmap? = videoCache.get(path)
+        fun getVideoThumbnail(path: String): android.graphics.Bitmap? {
+            val b = videoCache.get(path)
+            if (b != null && b.isRecycled) {
+                videoCache.remove(path)
+                return null
+            }
+            return b
+        }
 
         fun putVideoThumbnail(path: String, bitmap: android.graphics.Bitmap) {
+            if (bitmap.isRecycled) return
             videoCache.put(path, bitmap)
         }
 
@@ -928,6 +936,7 @@ class FileAdapter(
             appBadgeJob = null
             stopPulse()
             ScrollingTextHelper.cancelScrolling(txtName)
+            imgIcon.setImageDrawable(null)
             imgIcon.tag = null
             imgAppBadge?.setImageDrawable(null)
             imgAppBadge?.tag = null
@@ -1695,9 +1704,9 @@ class FileAdapter(
                                             if (imgIcon.tag == file.absolutePath) {
                                                 videoJob = adapterScope.launch(Dispatchers.IO) {
                                                     val bmp = extractRawOrImageThumbnail(file, 512)
-                                                    if (bmp != null) {
+                                                    if (bmp != null && !bmp.isRecycled) {
                                                         withContext(Dispatchers.Main) {
-                                                            if (imgIcon.tag == file.absolutePath) {
+                                                            if (imgIcon.tag == file.absolutePath && !bmp.isRecycled) {
                                                                 imgIcon.setImageBitmap(bmp)
                                                             }
                                                         }
@@ -1792,9 +1801,9 @@ class FileAdapter(
                             }
                         } else {
                             val bmp = za.kilowatch.ultimatefilemanager.audio.AudioCoverHelper.extractCover(itemView.context, file, 256)
-                            if (bmp != null) {
+                            if (bmp != null && !bmp.isRecycled) {
                                 withContext(Dispatchers.Main) {
-                                    if (imgIcon.tag == file.absolutePath) {
+                                    if (imgIcon.tag == file.absolutePath && !bmp.isRecycled) {
                                         imgIcon.setImageBitmap(bmp)
                                         imgIcon.imageTintList = null
                                         imgIcon.scaleType = ImageView.ScaleType.CENTER_CROP
@@ -2061,9 +2070,9 @@ class FileAdapter(
                                             if (imgIcon.tag == file.absolutePath) {
                                                 videoJob = adapterScope.launch(Dispatchers.IO) {
                                                     val bmp = extractRawOrImageThumbnail(file, 512)
-                                                    if (bmp != null) {
+                                                    if (bmp != null && !bmp.isRecycled) {
                                                         withContext(Dispatchers.Main) {
-                                                            if (imgIcon.tag == file.absolutePath) {
+                                                            if (imgIcon.tag == file.absolutePath && !bmp.isRecycled) {
                                                                 imgIcon.setImageBitmap(bmp)
                                                                 if (!isTv) updateTextColorForDrawable(imgIcon.drawable, true)
                                                             }
@@ -2175,9 +2184,9 @@ class FileAdapter(
                             }
                         } else {
                             val bmp = za.kilowatch.ultimatefilemanager.audio.AudioCoverHelper.extractCover(context, file, 384)
-                            if (bmp != null) {
+                            if (bmp != null && !bmp.isRecycled) {
                                 withContext(Dispatchers.Main) {
-                                    if (imgIcon.tag == file.absolutePath) {
+                                    if (imgIcon.tag == file.absolutePath && !bmp.isRecycled) {
                                         imgIcon.setImageBitmap(bmp)
                                         imgIcon.imageTintList = null
                                         imgIcon.scaleType = ImageView.ScaleType.CENTER_CROP

@@ -1872,7 +1872,7 @@ class NetworkBrowserFragment : Fragment() {
     }
 
     fun handleBackPress(): Boolean {
-        if (fileAdapter.isSelectionMode) {
+        if (::fileAdapter.isInitialized && fileAdapter.isSelectionMode) {
             fileAdapter.exitSelectionMode()
             return true
         }
@@ -2340,8 +2340,10 @@ class NetworkBrowserFragment : Fragment() {
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
     }
 
-    fun getSelectedFiles(): List<NetworkFile> = fileAdapter.getSelectedFiles()
-    fun exitSelectionMode() = fileAdapter.exitSelectionMode()
+    fun getSelectedFiles(): List<NetworkFile> = if (::fileAdapter.isInitialized) fileAdapter.getSelectedFiles() else emptyList()
+    fun exitSelectionMode() {
+        if (::fileAdapter.isInitialized) fileAdapter.exitSelectionMode()
+    }
     fun getCurrentPath(): String = currentPath
     fun getShare(): NetworkShare = share
     fun getCurrentFiles(): List<NetworkFile> = currentFiles
@@ -2373,7 +2375,8 @@ class NetworkBrowserFragment : Fragment() {
         showSortFilterSheet()
     }
     fun openViewModeDialog() {
-        ViewModeManager.showSelectionDialog(requireContext(), fileAdapter.viewMode) { selectedMode ->
+        val currentMode = if (::fileAdapter.isInitialized) fileAdapter.viewMode else ViewModeManager.load(requireContext())
+        ViewModeManager.showSelectionDialog(requireContext(), currentMode) { selectedMode ->
             val folderKey = SortFilterPreferenceManager.folderKey(share.id, currentPath)
             if (SortFilterPreferenceManager.hasFolderOverride(requireContext(), currentPath, share.id)) {
                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2429,7 +2432,8 @@ class NetworkBrowserFragment : Fragment() {
         wireTvIconBtn(view.findViewById(R.id.btnDrivePicker)) { onStoragePickerRequested?.invoke() }
         wireTvIconBtn(view.findViewById(R.id.btnSearchToggle)) { toggleSearch() }
         wireTvIconBtn(view.findViewById(R.id.btnViewToggle)) {
-            ViewModeManager.showSelectionDialog(requireContext(), fileAdapter.viewMode) { selectedMode ->
+            val currentMode = if (::fileAdapter.isInitialized) fileAdapter.viewMode else ViewModeManager.load(requireContext())
+            ViewModeManager.showSelectionDialog(requireContext(), currentMode) { selectedMode ->
                 val folderKey = SortFilterPreferenceManager.folderKey(share.id, currentPath)
                 if (SortFilterPreferenceManager.hasFolderOverride(requireContext(), currentPath, share.id)) {
                     lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2584,7 +2588,9 @@ class NetworkBrowserFragment : Fragment() {
     }
 
     private fun onBatchRenameCompleted(renamedMap: Map<String, String> = emptyMap()) {
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
         if (isSearchActive) {
             if (renamedMap.isNotEmpty()) {
                 currentFiles = currentFiles.map { nf ->
@@ -3446,7 +3452,9 @@ class NetworkBrowserFragment : Fragment() {
     private fun performNetworkExtract(archives: List<NetworkFile>, customDestPath: String? = null, isSelectFolderMode: Boolean) {
         if (archives.isEmpty()) return
         val ctx = context ?: return
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
 
         if (share.type == ShareType.SMB && share.isServerMode && share.remotePath.isEmpty() && currentPath.isNotEmpty()) {
             val shareName = currentPath.trimStart('/').substringBefore('/')
@@ -3629,7 +3637,9 @@ class NetworkBrowserFragment : Fragment() {
     fun shareNetworkFiles(files: List<NetworkFile>) {
         val ctx = context ?: return
         progressBar.visibility = View.VISIBLE
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             val tempDir = File(ctx.cacheDir, "share_temp_${System.currentTimeMillis()}")
             tempDir.mkdirs()
@@ -3946,7 +3956,9 @@ class NetworkBrowserFragment : Fragment() {
     private fun downloadAndEncrypt(files: List<NetworkFile>, entry: VaultEntry, isMove: Boolean) {
         val ctx = context ?: return
         progressBar.visibility = View.VISIBLE
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             val tempDir = File(ctx.cacheDir, "net_temp")
             tempDir.mkdirs()
@@ -4342,11 +4354,15 @@ class NetworkBrowserFragment : Fragment() {
         }
     }
 
-    fun isSelectionMode(): Boolean = fileAdapter.isSelectionMode
-    fun getSelectedCount(): Int = fileAdapter.getSelectedFiles().size
-    fun isAllSelected(): Boolean = fileAdapter.isAllSelected()
-    fun selectAll() = fileAdapter.selectAll()
-    fun deselectAll() = fileAdapter.deselectAll()
+    fun isSelectionMode(): Boolean = if (::fileAdapter.isInitialized) fileAdapter.isSelectionMode else false
+    fun getSelectedCount(): Int = if (::fileAdapter.isInitialized) fileAdapter.getSelectedFiles().size else 0
+    fun isAllSelected(): Boolean = if (::fileAdapter.isInitialized) fileAdapter.isAllSelected() else false
+    fun selectAll() {
+        if (::fileAdapter.isInitialized) fileAdapter.selectAll()
+    }
+    fun deselectAll() {
+        if (::fileAdapter.isInitialized) fileAdapter.deselectAll()
+    }
     fun getTabId(): String = arguments?.getString(ARG_TAB_ID) ?: ""
 
     private fun cacheNetworkFile(file: NetworkFile, onReady: (File) -> Unit) {

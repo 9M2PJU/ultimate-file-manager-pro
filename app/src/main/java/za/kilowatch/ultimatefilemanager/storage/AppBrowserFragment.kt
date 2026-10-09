@@ -229,7 +229,7 @@ class AppBrowserFragment : Fragment() {
         }
     }
 
-    fun getSelectedFiles(): List<AppItem> = appAdapter.getSelectedItems()
+    fun getSelectedFiles(): List<AppItem> = if (::appAdapter.isInitialized) appAdapter.getSelectedItems() else emptyList()
 
     /**
      * Public helper to clear app selection and hide the selection bar.
@@ -378,7 +378,7 @@ class AppBrowserFragment : Fragment() {
     }
 
     fun handleBackPress(): Boolean {
-        if (appAdapter.getSelectedItems().isNotEmpty()) {
+        if (::appAdapter.isInitialized && appAdapter.getSelectedItems().isNotEmpty()) {
             exitSelectionMode()
             return true
         }

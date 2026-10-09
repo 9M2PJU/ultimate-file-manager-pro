@@ -183,11 +183,9 @@ class ImageViewerActivity : AppCompatActivity() {
      */
     override fun onDestroy() {
         try {
-            val displayed = (imageView.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
             imageView.setImageDrawable(null)
-            if (displayed != null && !displayed.isRecycled) displayed.recycle()
         } catch (e: Exception) {
-            za.kilowatch.ultimatefilemanager.util.GoRoLog.w("ImageViewerActivity", "onDestroy: bitmap release failed: ${e.message}")
+            za.kilowatch.ultimatefilemanager.util.GoRoLog.w("ImageViewerActivity", "onDestroy: drawable release failed: ${e.message}")
         }
 
         try {

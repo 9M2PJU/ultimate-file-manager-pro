@@ -105,6 +105,8 @@ class TvPlayerPlaylistAdapter(
         super.onViewRecycled(holder)
         holder.thumbnailJob?.cancel()
         holder.durationJob?.cancel()
+        holder.imgThumbnail.setImageBitmap(null)
+        holder.imgThumbnail.tag = null
     }
 
     override fun getItemCount(): Int = items.size
@@ -211,9 +213,13 @@ class TvPlayerPlaylistAdapter(
             ?: FileAdapter.getVideoThumbnail(path)
             ?: za.kilowatch.ultimatefilemanager.audio.AudioCoverHelper.getCachedArt(path)
         if (cached != null) {
-            holder.imgThumbnail.setImageBitmap(cached)
-            holder.imgFallbackIcon.visibility = View.GONE
-            return
+            if (!cached.isRecycled) {
+                holder.imgThumbnail.setImageBitmap(cached)
+                holder.imgFallbackIcon.visibility = View.GONE
+                return
+            } else {
+                thumbnailCache.remove(path)
+            }
         }
 
         // Default placeholder
@@ -475,11 +481,11 @@ class TvPlayerPlaylistAdapter(
                 "bindThumbnail END bitmap=${bitmap != null} isActive=$isActive path=$path")
 
             // Cache and present on main thread
-            if (bitmap != null && isActive) {
+            if (bitmap != null && !bitmap.isRecycled && isActive) {
                 thumbnailCache.put(path, bitmap)
                 FileAdapter.putVideoThumbnail(path, bitmap)
                 withContext(Dispatchers.Main) {
-                    if (holder.imgThumbnail.tag == path) {
+                    if (holder.imgThumbnail.tag == path && !bitmap.isRecycled) {
                         holder.imgThumbnail.setImageBitmap(bitmap)
                         holder.imgFallbackIcon.visibility = View.GONE
                     }

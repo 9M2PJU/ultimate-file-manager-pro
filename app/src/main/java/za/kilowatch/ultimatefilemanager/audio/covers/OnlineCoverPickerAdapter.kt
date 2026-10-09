@@ -74,10 +74,13 @@ class OnlineCoverPickerAdapter(
             imgCoverThumb.tag = thumbUrl
 
             val cached = thumbnailCache.get(thumbUrl)
-            if (cached != null) {
+            if (cached != null && !cached.isRecycled) {
                 imgCoverThumb.alpha = 1f
                 imgCoverThumb.setImageBitmap(cached)
             } else {
+                if (cached != null && cached.isRecycled) {
+                    thumbnailCache.remove(thumbUrl)
+                }
                 imgCoverThumb.alpha = 0.45f
                 imgCoverThumb.setImageResource(R.drawable.ic_file_image)
 
@@ -97,7 +100,7 @@ class OnlineCoverPickerAdapter(
                     }
 
                     if (imgCoverThumb.tag == thumbUrl) {
-                        if (bitmap != null) {
+                        if (bitmap != null && !bitmap.isRecycled) {
                             thumbnailCache.put(thumbUrl, bitmap)
                             imgCoverThumb.setImageBitmap(bitmap)
                             imgCoverThumb.animate().alpha(1f).setDuration(150).start()

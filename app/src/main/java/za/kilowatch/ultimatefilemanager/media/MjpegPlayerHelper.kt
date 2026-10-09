@@ -174,13 +174,10 @@ object MjpegFrameDecoder {
                     val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts)
                     if (bmp != null) {
                         if (!isBlackBitmap(bmp)) {
-                            fallbackBmp?.recycle()
                             return bmp
                         } else {
                             if (fallbackBmp == null) {
                                 fallbackBmp = bmp
-                            } else {
-                                bmp.recycle()
                             }
                         }
                     }

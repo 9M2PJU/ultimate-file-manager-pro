@@ -826,8 +826,6 @@ class UfmDocumentsProvider : DocumentsProvider() {
                     }
                 } catch (_: Exception) {
                     runCatching { writeEnd.close() }
-                } finally {
-                    bitmap.recycle()
                 }
             }.also { it.name = "ufm-thumb"; it.isDaemon = true }.start()
             AssetFileDescriptor(readEnd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)

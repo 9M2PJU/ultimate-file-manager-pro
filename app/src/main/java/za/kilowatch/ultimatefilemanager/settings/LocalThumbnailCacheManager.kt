@@ -485,10 +485,9 @@ class LocalThumbnailCacheManager(private val context: Context) {
                 GoRoLog.e(TAG, "Failed to write local thumbnail cache file", e)
                 destFile.delete()
             } finally {
-                if (scaled !== finalBitmap) {
-                    scaled.recycle()
-                }
-                finalBitmap?.recycle()
+                // Do not manually call .recycle() on scaled or finalBitmap.
+                // finalBitmap may be shared with in-memory caches (e.g. AudioCoverHelper.artCache)
+                // or active ViewHolders. Allow garbage collection to reclaim bitmap memory safely.
             }
         }
 

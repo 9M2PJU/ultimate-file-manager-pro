@@ -3,7 +3,7 @@
 
   <h1>Ultimate File Manager Pro</h1>
 
-  <p><b>The Ultimate Dual-Pane File Manager for Android Mobile, Android TV, and Windows PC.</b></p>
+  <p><b>The Ultimate Dual-Pane File Manager for Android Mobile, Android TV, Windows PC, and Linux.</b></p>
 
   <p>
     <a href="https://www.kilowatch.co.za"><img src="https://img.shields.io/badge/Website-kilowatch.co.za-0066CC?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website" /></a>
@@ -27,6 +27,7 @@
 - [FOSS Edition vs. Store Edition](#-foss-edition-vs-store-edition)
 - [App Size & Storage Footprint](#-app-size--storage-footprint)
 - [Windows Companion App](#-windows-companion-app)
+- [Linux Companion App](#-linux-companion-app)
 - [Building the Android App](#-building-the-android-app)
 - [AI Usage & Quality Assurance](#-ai-usage--quality-assurance)
 - [Community & Support](#-community--support)
@@ -36,7 +37,7 @@
 
 ## 🌟 Overview
 
-**Ultimate File Manager Pro (UFM)** is a high-performance, feature-packed dual-pane file manager designed for power users across **Android Mobile**, **Android TV / Fire TV**, and **Windows PC**. Built with privacy, efficiency, and speed in mind, UFM allows seamless side-by-side file operations, LAN auto-discovery, remote PC pairing, and multi-protocol network storage access.
+**Ultimate File Manager Pro (UFM)** is a high-performance, feature-packed dual-pane file manager designed for power users across **Android Mobile**, **Android TV / Fire TV**, **Windows PC**, and **Linux**. Built with privacy, efficiency, and speed in mind, UFM allows seamless side-by-side file operations, LAN auto-discovery, remote PC pairing, and multi-protocol network storage access.
 
 This repository contains the official **Free and Open Source Software (FOSS)** edition of UFM.
 
@@ -56,6 +57,8 @@ Pre-compiled production binaries for all supported platforms are published on ev
 | 💻 **Windows Desktop** | [`ufm-windows-portable.exe`](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest/download/ufm-windows-portable.exe) | Single-file portable companion (No installation required) | Standalone EXE |
 | 💻 **Windows Desktop** | [`UltimateFileManagerProCompanion_x64-setup.exe`](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest/download/UltimateFileManagerProCompanion_x64-setup.exe) | 64-bit Windows Setup Installer | Setup EXE |
 | 💻 **Windows Desktop** | [`UltimateFileManagerProCompanion_x64_en-US.msi`](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest/download/UltimateFileManagerProCompanion_x64_en-US.msi) | 64-bit Windows MSI Package Installer | MSI Installer |
+| 🐧 **Linux Desktop** | [`ufm-companion-x86_64.AppImage`](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest/download/ufm-companion-x86_64.AppImage) | Universal Wayland-first Linux AppImage (No installation required) | AppImage |
+| 🐧 **Linux Desktop** | [`ufm-companion_amd64.deb`](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest/download/ufm-companion_amd64.deb) | Debian / Ubuntu 64-bit package installer | DEB Package |
 | 📦 **Source Code** | [GitHub Releases](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest) | Complete source code archives | Zip / Tarball |
 
 > [!TIP]
@@ -70,7 +73,7 @@ Pre-compiled production binaries for all supported platforms are published on ev
 ## ✨ Features
 
 - ⚡ **Dual-Pane Efficiency**: Side-by-side file viewing and management for effortless drag, drop, copy, and move operations.
-- 🖥️ **Native Windows PC Companion**: Connect your PC and Android device over local Wi-Fi with PIN authentication and TLS certificate pinning—no cloud required.
+- 🖥️ **Native Desktop Companions (Windows & Linux)**: Connect your Windows or Linux PC (Wayland-first, Sway/Hyprland compatible) and Android device over local Wi-Fi with PIN authentication and TLS certificate pinning—no cloud required.
 - 🚀 **1-Click APK Sideloading**: Drag-and-drop `.apk` or `.xapk` files onto the PC Companion zone to install them remotely on your TV or phone.
 - ☁️ **Self-Hosted Network Storage**: Full integration with **SMB**, **SFTP**, **FTP**, **WebDAV**, and **AWS S3**.
 - 🛡️ **100% Privacy & FOSS**: Free of closed-source SDKs, Google tracking services, and invasive analytics.
@@ -160,6 +163,49 @@ npm run tauri dev      # Development mode
 npm run tauri build    # Production build (.exe & .msi)
 ```
 *Detailed Windows documentation can be found at [UFM-Windows/README.md](UFM-Windows/README.md).*
+
+---
+
+## 🐧 Linux Companion App
+
+UFM includes a native, Wayland-first Linux desktop companion built with Rust, GTK3, WebKitGTK, and Tauri 2. Designed for power users, it seamlessly integrates with standard desktop environments (GNOME, KDE Plasma) as well as modern Wayland tiling window managers (Hyprland, Sway, Niri).
+
+| Feature | Details |
+|---|---|
+| 🪟 **Wayland-First Architecture** | Native Wayland protocol support, compositor server-side decorations (SSD), and proper `app_id` (`za.kilowatch.ufm-companion`) for window manager rules |
+| 📁 **Dual-Pane File Browser** | Browse local POSIX storage (`/`, `$HOME`, `/media`, `/mnt`) side-by-side with connected Android devices |
+| ⬆️⬇️ **Wi-Fi Streaming Transfer** | High-throughput chunked streaming transfer with real-time byte progress callbacks |
+| 📦 **Remote Sideloading** | Drag-and-drop `.apk` or `.xapk` files onto the sideload zone to install applications remotely on your TV or phone |
+| 🔐 **TOFU TLS Pinning** | Trust-On-First-Use SHA-256 certificate fingerprint verification and dynamic PIN authentication |
+| 🔍 **Zero-Conf Discovery** | Subnet-targeted UDP broadcast auto-discovery on local Wi-Fi |
+
+### Building & Running the Linux Companion
+
+#### Prerequisites (Debian / Ubuntu / Pop!_OS)
+```bash
+sudo apt update && sudo apt install -y \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
+
+#### Development & Packaging
+```bash
+cd UFM-Linux
+npm install
+
+# Run in development mode
+npm run tauri dev
+
+# Build universal AppImage and Debian package
+npm run tauri build -- --bundles appimage,deb
+```
+*Detailed Linux companion documentation can be found at [UFM-Linux/README.md](UFM-Linux/README.md).*
 
 ---
 

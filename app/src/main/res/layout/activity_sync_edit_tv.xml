@@ -1,34 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    Folder Sync Edit Activity — TV Standard (Two-Column Widescreen Form)
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_tv_gradient">
+    android:background="@drawable/bg_tv_gradient"
+    tools:context=".sync.SyncEditActivity">
 
     <!-- ══════════════════════════════════════════════════
-         TV HEADER
+         TV HEADER (64dp Standard)
          ══════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/layerHeader"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="64dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="32dp"
+        android:paddingHorizontal="32dp"
+        android:background="@color/tv_glass_white_10"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:padding="12dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
             android:src="@drawable/ic_arrow_back"
             android:background="@drawable/selector_tv_icon_btn"
             android:focusable="true"
             android:focusableInTouchMode="false"
             android:clickable="true"
+            android:contentDescription="@string/cd_back"
             app:tint="@color/tv_text_primary" />
 
         <LinearLayout
@@ -36,7 +45,8 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="24dp">
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="16dp">
 
             <TextView
                 android:id="@+id/txtTitle"
@@ -44,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/edit_sync_profile"
                 android:textColor="@color/tv_text_primary"
-                android:textSize="28sp"
+                android:textSize="22sp"
                 android:fontFamily="sans-serif-black" />
 
             <TextView
@@ -53,433 +63,470 @@
                 android:layout_height="wrap_content"
                 android:text="@string/configure_sync_folders_schedule"
                 android:textColor="@color/tv_text_secondary"
-                android:textSize="16sp"
-                android:layout_marginTop="4dp" />
+                android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <ScrollView
-        android:layout_width="match_parent"
+    <!-- ══════════════════════════════════════════════════
+         TWO-COLUMN WIDESCREEN FORM
+         ══════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginHorizontal="100dp"
-        android:layout_marginTop="8dp"
-        android:clipToPadding="false"
-        android:paddingBottom="24dp"
-        android:descendantFocusability="afterDescendants"
+        android:orientation="horizontal"
+        android:paddingHorizontal="32dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:gravity="top"
+        app:layout_constraintTop_toBottomOf="@id/layerHeader"
         app:layout_constraintBottom_toTopOf="@+id/layoutBottomBar"
-        app:layout_constraintTop_toBottomOf="@+id/layerHeader">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+        <!-- ── Left Column: General & Folders ────────── -->
+        <ScrollView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="14dp"
+            android:scrollbars="none"
+            android:overScrollMode="never">
 
-            <!-- ══════════════════════════════════════════════════
-                 CARD 1: GENERAL & FOLDERS
-                 ══════════════════════════════════════════════════ -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/general_settings"
-                android:textColor="@color/tv_accent"
-                android:textSize="14sp"
-                android:fontFamily="sans-serif-black"
-                android:letterSpacing="0.05"
-                android:layout_marginStart="4dp"
-                android:layout_marginBottom="8dp" />
-
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/tv_glass_white_10"
-                app:strokeColor="@color/tv_glass_border"
-                app:strokeWidth="1dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                android:orientation="vertical">
 
-                <LinearLayout
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/general_settings"
+                    android:textColor="@color/tv_accent"
+                    android:textSize="12.5sp"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0.05"
+                    android:textAllCaps="true"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <!-- Profile Name -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/profile_name_eg_dcim_backup"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:boxStrokeColor="@color/tv_accent"
-                        app:hintTextColor="@color/tv_accent"
-                        android:textColorHint="@color/tv_text_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/editName"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/tv_text_primary"
-                            android:textSize="18sp"
-                            android:inputType="textCapWords" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Source Folder -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:text="@string/source_phone"
-                        android:textColor="@color/tv_text_secondary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-bold" />
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/tv_glass_white_10"
+                    app:strokeColor="@color/tv_glass_border"
+                    app:strokeWidth="1dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp">
 
                     <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/bg_dialog_glass"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:id="@+id/txtLocalPath"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/not_selected"
-                            android:textColor="@color/tv_text_primary"
-                            android:textSize="15sp"
-                            android:ellipsize="middle"
-                            android:maxLines="1" />
-
-                        <Button
-                            android:id="@+id/btnSelectLocal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="44dp"
-                            android:layout_marginStart="12dp"
-                            android:text="@string/select_folder"
-                            android:textColor="@color/tv_text_primary"
-                            android:background="@drawable/selector_tv_button"
-                            android:focusable="true" />
-                    </LinearLayout>
-
-                    <!-- Destination Network Share -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:text="@string/destination_network_share"
-                        android:textColor="@color/tv_text_secondary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-bold" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/select_share"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:boxStrokeColor="@color/tv_accent"
-                        app:hintTextColor="@color/tv_accent"
-                        app:endIconTint="@color/tv_accent"
-                        android:textColorHint="@color/tv_text_hint">
-
-                        <AutoCompleteTextView
-                            android:id="@+id/dropdownShare"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/tv_text_primary"
-                            android:textSize="16sp"
-                            android:popupBackground="@drawable/bg_dialog_glass"
-                            android:dropDownVerticalOffset="4dp"
-                            android:inputType="none"
-                            android:focusable="true" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Remote Folder -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:text="@string/remote_folder"
-                        android:textColor="@color/tv_text_secondary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-bold" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/bg_dialog_glass"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:id="@+id/txtRemotePath"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/not_selected"
-                            android:textColor="@color/tv_text_primary"
-                            android:textSize="15sp"
-                            android:ellipsize="middle"
-                            android:maxLines="1" />
-
-                        <Button
-                            android:id="@+id/btnBrowseRemote"
-                            android:layout_width="wrap_content"
-                            android:layout_height="44dp"
-                            android:layout_marginStart="12dp"
-                            android:text="@string/browse_remote"
-                            android:textColor="@color/tv_text_primary"
-                            android:background="@drawable/selector_tv_button"
-                            android:focusable="true" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ══════════════════════════════════════════════════
-                 CARD 2: SCHEDULE & AUTOMATION
-                 ══════════════════════════════════════════════════ -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/schedule_and_triggers"
-                android:textColor="@color/tv_accent"
-                android:textSize="14sp"
-                android:fontFamily="sans-serif-black"
-                android:letterSpacing="0.05"
-                android:layout_marginStart="4dp"
-                android:layout_marginBottom="8dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/tv_glass_white_10"
-                app:strokeColor="@color/tv_glass_border"
-                app:strokeWidth="1dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/schedule_mode"
-                        android:textColor="@color/tv_text_secondary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-bold"
-                        android:layout_marginBottom="10dp" />
-
-                    <!-- Schedule Mode Buttons: Stacked Vertically -->
-                    <Button
-                        android:id="@+id/chipInterval"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/every_x_minshrs"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium"
-                        android:background="@drawable/selector_tv_button"
-                        android:textColor="@color/tv_text_primary"
-                        android:focusable="true" />
-
-                    <Button
-                        android:id="@+id/chipScheduled"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginBottom="12dp"
-                        android:text="@string/scheduled_time"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium"
-                        android:background="@drawable/selector_tv_button"
-                        android:textColor="@color/tv_text_primary"
-                        android:focusable="true" />
-
-                    <!-- Interval Section -->
-                    <LinearLayout
-                        android:id="@+id/layoutIntervalSection"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginTop="4dp">
+                        android:padding="16dp">
 
+                        <!-- Profile Name -->
                         <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="@string/sync_frequency"
+                            android:hint="@string/profile_name_eg_dcim_backup"
                             app:boxCornerRadiusTopStart="12dp"
                             app:boxCornerRadiusTopEnd="12dp"
                             app:boxCornerRadiusBottomStart="12dp"
                             app:boxCornerRadiusBottomEnd="12dp"
                             app:boxStrokeColor="@color/tv_accent"
                             app:hintTextColor="@color/tv_accent"
-                            app:endIconTint="@color/tv_accent"
                             android:textColorHint="@color/tv_text_hint">
 
-                            <AutoCompleteTextView
-                                android:id="@+id/dropdownInterval"
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/editName"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:textColor="@color/tv_text_primary"
                                 android:textSize="16sp"
-                                android:popupBackground="@drawable/bg_dialog_glass"
-                                android:dropDownVerticalOffset="4dp"
-                                android:inputType="none"
-                                android:focusable="true" />
-                        </com.google.android.material.textfield.TextInputLayout>
-                    </LinearLayout>
-
-                    <!-- Scheduled Section -->
-                    <LinearLayout
-                        android:id="@+id/layoutScheduledSection"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginTop="4dp"
-                        android:visibility="gone">
-
-                        <!-- Period Dropdown -->
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="@string/repeat"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxStrokeColor="@color/tv_accent"
-                            app:hintTextColor="@color/tv_accent"
-                            app:endIconTint="@color/tv_accent"
-                            android:textColorHint="@color/tv_text_hint">
-
-                            <AutoCompleteTextView
-                                android:id="@+id/dropdownPeriod"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/tv_text_primary"
-                                android:textSize="16sp"
-                                android:popupBackground="@drawable/bg_dialog_glass"
-                                android:dropDownVerticalOffset="4dp"
-                                android:inputType="none"
-                                android:focusable="true" />
+                                android:inputType="textCapWords" />
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <!-- Day of Week (Weekly) -->
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:id="@+id/layoutDayOfWeek"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/day_of_week"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxStrokeColor="@color/tv_accent"
-                            app:hintTextColor="@color/tv_accent"
-                            app:endIconTint="@color/tv_accent"
-                            android:textColorHint="@color/tv_text_hint"
-                            android:visibility="gone">
-
-                            <AutoCompleteTextView
-                                android:id="@+id/dropdownDayOfWeek"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/tv_text_primary"
-                                android:textSize="16sp"
-                                android:popupBackground="@drawable/bg_dialog_glass"
-                                android:dropDownVerticalOffset="4dp"
-                                android:inputType="none"
-                                android:focusable="true" />
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <!-- Day of Month (Monthly) -->
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:id="@+id/layoutDayOfMonth"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/day_of_month"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxStrokeColor="@color/tv_accent"
-                            app:hintTextColor="@color/tv_accent"
-                            app:endIconTint="@color/tv_accent"
-                            android:textColorHint="@color/tv_text_hint"
-                            android:visibility="gone">
-
-                            <AutoCompleteTextView
-                                android:id="@+id/dropdownDayOfMonth"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/tv_text_primary"
-                                android:textSize="16sp"
-                                android:popupBackground="@drawable/bg_dialog_glass"
-                                android:dropDownVerticalOffset="4dp"
-                                android:inputType="none"
-                                android:focusable="true" />
-                        </com.google.android.material.textfield.TextInputLayout>
-
+                        <!-- Source Folder -->
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:text="@string/sync_time"
+                            android:text="@string/source_phone"
                             android:textColor="@color/tv_text_secondary"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:fontFamily="sans-serif-bold" />
 
-                        <TimePicker
-                            android:id="@+id/timePicker"
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/bg_dialog_glass"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:id="@+id/txtLocalPath"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/not_selected"
+                                android:textColor="@color/tv_text_primary"
+                                android:textSize="14sp"
+                                android:ellipsize="middle"
+                                android:maxLines="1" />
+
+                            <Button
+                                android:id="@+id/btnSelectLocal"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:layout_marginStart="10dp"
+                                android:text="@string/select_folder"
+                                android:textSize="13sp"
+                                android:textColor="@color/tv_text_primary"
+                                android:background="@drawable/selector_tv_button"
+                                android:focusable="true" />
+                        </LinearLayout>
+
+                        <!-- Destination Network Share -->
+                        <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center_horizontal"
-                            android:layout_marginTop="8dp"
-                            android:timePickerMode="spinner" />
-                    </LinearLayout>
+                            android:layout_marginTop="16dp"
+                            android:text="@string/destination_network_share"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-bold" />
 
-                    <!-- Notifications Switch -->
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switchNotifications"
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:hint="@string/select_share"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusBottomEnd="12dp"
+                            app:boxStrokeColor="@color/tv_accent"
+                            app:hintTextColor="@color/tv_accent"
+                            app:endIconTint="@color/tv_accent"
+                            android:textColorHint="@color/tv_text_hint">
+
+                            <AutoCompleteTextView
+                                android:id="@+id/dropdownShare"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/tv_text_primary"
+                                android:textSize="15sp"
+                                android:popupBackground="@drawable/bg_dialog_glass"
+                                android:dropDownVerticalOffset="4dp"
+                                android:inputType="none"
+                                android:focusable="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Remote Folder -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="@string/remote_folder"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/bg_dialog_glass"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:id="@+id/txtRemotePath"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/not_selected"
+                                android:textColor="@color/tv_text_primary"
+                                android:textSize="14sp"
+                                android:ellipsize="middle"
+                                android:maxLines="1" />
+
+                            <Button
+                                android:id="@+id/btnBrowseRemote"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:layout_marginStart="10dp"
+                                android:text="@string/browse_remote"
+                                android:textSize="13sp"
+                                android:textColor="@color/tv_text_primary"
+                                android:background="@drawable/selector_tv_button"
+                                android:focusable="true" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ── Right Column: Schedule & Automation ──── -->
+        <ScrollView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/schedule_and_triggers"
+                    android:textColor="@color/tv_accent"
+                    android:textSize="12.5sp"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0.05"
+                    android:textAllCaps="true"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/tv_glass_white_10"
+                    app:strokeColor="@color/tv_glass_border"
+                    app:strokeWidth="1dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:checked="true"
-                        android:textColor="@color/tv_text_primary"
-                        android:textSize="15sp"
-                        android:text="@string/show_sync_notifications"
-                        android:focusable="true" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/schedule_mode"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-bold"
+                            android:layout_marginBottom="8dp" />
 
-        </LinearLayout>
-    </ScrollView>
+                        <!-- Segmented Mode Buttons Row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/chipInterval"
+                                android:layout_width="0dp"
+                                android:layout_height="44dp"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="6dp"
+                                android:text="@string/every_x_minshrs"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:background="@drawable/selector_tv_button"
+                                android:textColor="@color/tv_text_primary"
+                                android:focusable="true" />
+
+                            <Button
+                                android:id="@+id/chipScheduled"
+                                android:layout_width="0dp"
+                                android:layout_height="44dp"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="@string/scheduled_time"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:background="@drawable/selector_tv_button"
+                                android:textColor="@color/tv_text_primary"
+                                android:focusable="true" />
+                        </LinearLayout>
+
+                        <!-- Interval Section -->
+                        <LinearLayout
+                            android:id="@+id/layoutIntervalSection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/sync_frequency"
+                                app:boxCornerRadiusTopStart="12dp"
+                                app:boxCornerRadiusTopEnd="12dp"
+                                app:boxCornerRadiusBottomStart="12dp"
+                                app:boxCornerRadiusBottomEnd="12dp"
+                                app:boxStrokeColor="@color/tv_accent"
+                                app:hintTextColor="@color/tv_accent"
+                                app:endIconTint="@color/tv_accent"
+                                android:textColorHint="@color/tv_text_hint">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/dropdownInterval"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/tv_text_primary"
+                                    android:textSize="15sp"
+                                    android:popupBackground="@drawable/bg_dialog_glass"
+                                    android:dropDownVerticalOffset="4dp"
+                                    android:inputType="none"
+                                    android:focusable="true" />
+                            </com.google.android.material.textfield.TextInputLayout>
+                        </LinearLayout>
+
+                        <!-- Scheduled Section -->
+                        <LinearLayout
+                            android:id="@+id/layoutScheduledSection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone">
+
+                            <!-- Period Dropdown -->
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/repeat"
+                                app:boxCornerRadiusTopStart="12dp"
+                                app:boxCornerRadiusTopEnd="12dp"
+                                app:boxCornerRadiusBottomStart="12dp"
+                                app:boxCornerRadiusBottomEnd="12dp"
+                                app:boxStrokeColor="@color/tv_accent"
+                                app:hintTextColor="@color/tv_accent"
+                                app:endIconTint="@color/tv_accent"
+                                android:textColorHint="@color/tv_text_hint">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/dropdownPeriod"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/tv_text_primary"
+                                    android:textSize="15sp"
+                                    android:popupBackground="@drawable/bg_dialog_glass"
+                                    android:dropDownVerticalOffset="4dp"
+                                    android:inputType="none"
+                                    android:focusable="true" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <!-- Day of Week (Weekly) -->
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:id="@+id/layoutDayOfWeek"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:hint="@string/day_of_week"
+                                app:boxCornerRadiusTopStart="12dp"
+                                app:boxCornerRadiusTopEnd="12dp"
+                                app:boxCornerRadiusBottomStart="12dp"
+                                app:boxCornerRadiusBottomEnd="12dp"
+                                app:boxStrokeColor="@color/tv_accent"
+                                app:hintTextColor="@color/tv_accent"
+                                app:endIconTint="@color/tv_accent"
+                                android:textColorHint="@color/tv_text_hint"
+                                android:visibility="gone">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/dropdownDayOfWeek"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/tv_text_primary"
+                                    android:textSize="15sp"
+                                    android:popupBackground="@drawable/bg_dialog_glass"
+                                    android:dropDownVerticalOffset="4dp"
+                                    android:inputType="none"
+                                    android:focusable="true" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <!-- Day of Month (Monthly) -->
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:id="@+id/layoutDayOfMonth"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:hint="@string/day_of_month"
+                                app:boxCornerRadiusTopStart="12dp"
+                                app:boxCornerRadiusTopEnd="12dp"
+                                app:boxCornerRadiusBottomStart="12dp"
+                                app:boxCornerRadiusBottomEnd="12dp"
+                                app:boxStrokeColor="@color/tv_accent"
+                                app:hintTextColor="@color/tv_accent"
+                                app:endIconTint="@color/tv_accent"
+                                android:textColorHint="@color/tv_text_hint"
+                                android:visibility="gone">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/dropdownDayOfMonth"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/tv_text_primary"
+                                    android:textSize="15sp"
+                                    android:popupBackground="@drawable/bg_dialog_glass"
+                                    android:dropDownVerticalOffset="4dp"
+                                    android:inputType="none"
+                                    android:focusable="true" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="@string/sync_time"
+                                android:textColor="@color/tv_text_secondary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-bold" />
+
+                            <TimePicker
+                                android:id="@+id/timePicker"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:layout_marginTop="4dp"
+                                android:timePickerMode="spinner" />
+                        </LinearLayout>
+
+                        <!-- Notifications Switch -->
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchNotifications"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:checked="true"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="14sp"
+                            android:text="@string/show_sync_notifications"
+                            android:focusable="true" />
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </ScrollView>
+
+    </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════
          TV BOTTOM ACTION BAR
@@ -488,16 +535,22 @@
         android:id="@+id/layoutBottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="24dp"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="16dp"
         android:orientation="horizontal"
         android:gravity="end"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:background="@color/tv_glass_white_10"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:id="@+id/btnDelete"
             android:layout_width="wrap_content"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
+            android:paddingHorizontal="24dp"
             android:text="@string/delete_1"
+            android:textSize="14sp"
             android:textColor="?attr/ufmDenied"
             android:background="@drawable/selector_tv_button"
             android:focusable="true"
@@ -506,9 +559,11 @@
         <Button
             android:id="@+id/btnSave"
             android:layout_width="wrap_content"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:layout_marginStart="16dp"
+            android:paddingHorizontal="28dp"
             android:text="@string/save_profile"
+            android:textSize="14sp"
             android:textColor="@color/tv_text_primary"
             android:background="@drawable/selector_tv_button_yellow"
             android:focusable="true" />

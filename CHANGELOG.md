@@ -5,6 +5,23 @@ All notable changes to **Ultimate File Manager Pro (FOSS Edition)** are document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.8] — 2026-10-06
+
+### Added
+- **Native Linux Companion App (`UFM-Linux/`)**: Native Linux desktop companion built with Tauri 2, Rust, and React 19 for Wayland and X11 desktops (#45).
+- **Wayland-First Integration**: Stable `app_id` (`za.kilowatch.ufm-companion`) for tiling compositors (Sway, Hyprland, Niri), native decorations, and XDG desktop portal integration.
+- **Standalone AppImage & Deb Packaging**: Standalone `.AppImage` and `.deb` packaging with an Ubuntu 22.04 glibc 2.35 baseline.
+- **Unified Core Engine (`crates/ufm-core`)**: Pure Rust library encapsulating multi-NIC LAN discovery, TLS TOFU certificate fingerprint pinning, and streaming transfer buffers across desktop companion platforms.
+- **Automated Linux CI/CD Workflow**: GitHub Actions build workflow (`.github/workflows/linux-companion.yml`) for Linux companion compilation, tests, and release asset generation.
+- **Restored Windows Companion Backend**: Restored Windows desktop companion Rust backend (`UFM-Windows/src-tauri/`).
+
+### Changed
+- **Folder Sync & Advanced Sync Android TV Layouts**: Modernized Android TV layouts to adhere to UFMStandard:
+  - Reduced profile card height by 50% (~84dp) with 44dp frosted icon containers, inline schedule badges, and horizontal source-to-destination route lines.
+  - Standardized TV header bar (64dp) and safe padding (32dp), eliminating oversized 120dp margins and bloated empty states.
+  - Rebuilt Sync and Advanced Sync TV edit screens into two-column widescreen forms with horizontal segmented button rows, replacing 1,700px wide stretched single columns.
+  - Polished TV action dialogs with standard yellow primary action buttons and clean spacing.
+
 ## [2.1.7] — 2026-10-03
 
 ### Fixed

@@ -64,7 +64,6 @@ object FFmpegThumbnailHelper {
             // If the frame is black, retry at different percentage options to avoid empty/black thumbnails
             if (bitmap != null && checkIsBlackBitmap(bitmap)) {
                 za.kilowatch.ultimatefilemanager.util.GoRoLog.w(TAG, "extractVideoFrame: extracted frame at $timePercent% was completely black. Retrying at alternative times...")
-                bitmap.recycle()
                 bitmap = null
 
                 // Try alternatives: 15%, 20%, 5%, 30%
@@ -80,7 +79,6 @@ object FFmpegThumbnailHelper {
                             break
                         } else {
                             za.kilowatch.ultimatefilemanager.util.GoRoLog.w(TAG, "extractVideoFrame: frame at $altPercent% was also black. Continuing retry...")
-                            altBitmap.recycle()
                         }
                     }
                 }
@@ -105,7 +103,6 @@ object FFmpegThumbnailHelper {
             if (success) {
                 bitmap
             } else {
-                bitmap.recycle()
                 null
             }
         } catch (e: Throwable) {

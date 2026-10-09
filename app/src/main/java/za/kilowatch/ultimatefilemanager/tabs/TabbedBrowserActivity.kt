@@ -2140,20 +2140,32 @@ class TabbedBrowserActivity : AppCompatActivity(),
     private fun syncActiveTabSelectionState() {
         fun doSync() {
             val frag = getActiveFragment()
-            val isSelection = when (frag) {
-                is FileBrowserFragment -> frag.isSelectionMode()
-                is NetworkBrowserFragment -> frag.isSelectionMode()
-                else -> false
+            val isSelection = try {
+                when (frag) {
+                    is FileBrowserFragment -> frag.isSelectionMode()
+                    is NetworkBrowserFragment -> frag.isSelectionMode()
+                    else -> false
+                }
+            } catch (_: Exception) {
+                false
             }
-            val count = when (frag) {
-                is FileBrowserFragment -> frag.getSelectedCount()
-                is NetworkBrowserFragment -> frag.getSelectedCount()
-                else -> 0
+            val count = try {
+                when (frag) {
+                    is FileBrowserFragment -> frag.getSelectedCount()
+                    is NetworkBrowserFragment -> frag.getSelectedCount()
+                    else -> 0
+                }
+            } catch (_: Exception) {
+                0
             }
-            val isAll = when (frag) {
-                is FileBrowserFragment -> frag.isAllSelected()
-                is NetworkBrowserFragment -> frag.isAllSelected()
-                else -> false
+            val isAll = try {
+                when (frag) {
+                    is FileBrowserFragment -> frag.isAllSelected()
+                    is NetworkBrowserFragment -> frag.isAllSelected()
+                    else -> false
+                }
+            } catch (_: Exception) {
+                false
             }
             updateSelectionHeader(isSelection, count, isAll)
         }

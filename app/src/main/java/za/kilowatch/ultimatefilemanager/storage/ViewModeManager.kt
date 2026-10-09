@@ -42,6 +42,8 @@ object ViewModeManager {
     }
 
     /** Load the saved mode, migrating legacy settings if needed. */
+    fun getMode(context: Context): ViewMode = load(context)
+
     fun load(context: Context): ViewMode {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.contains(KEY_VIEW_MODE_V2)) {

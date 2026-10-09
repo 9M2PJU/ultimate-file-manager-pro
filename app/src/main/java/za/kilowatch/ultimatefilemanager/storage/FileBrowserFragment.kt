@@ -2546,7 +2546,9 @@ class FileBrowserFragment : Fragment() {
                         androidx.work.WorkInfo.State.SUCCEEDED -> {
                             progress.dismiss()
                             if (!isAdded) return@observe
-                            fileAdapter.exitSelectionMode()
+                            if (::fileAdapter.isInitialized) {
+                                fileAdapter.exitSelectionMode()
+                            }
                             val count = workInfo.outputData.getInt(za.kilowatch.ultimatefilemanager.media.MediaOperationWorker.KEY_OUTPUT_COUNT, 1)
                             val name = workInfo.outputData.getString(za.kilowatch.ultimatefilemanager.media.MediaOperationWorker.KEY_OUTPUT_NAME)
                             val msg = when (opType) {
@@ -2959,7 +2961,7 @@ class FileBrowserFragment : Fragment() {
                 activeTagsFilter = state.activeTags
                 // Badge: tint the sort button to signal a folder-specific override is active
                 updateSortBadge(hasFolderOverride)
-                if (fileAdapter.viewMode != viewModeToApply) {
+                if (::fileAdapter.isInitialized && fileAdapter.viewMode != viewModeToApply) {
                     applyViewMode(viewModeToApply)
                 }
             }
@@ -3005,7 +3007,7 @@ class FileBrowserFragment : Fragment() {
 
         // Exit selection mode when navigating or after an operation. Preserve it only
         // when reloading the same directory on resume (background/foreground or tab switch).
-        if (fileAdapter.isSelectionMode && !preserveSelection) {
+        if (::fileAdapter.isInitialized && fileAdapter.isSelectionMode && !preserveSelection) {
             fileAdapter.exitSelectionMode()
         }
 
@@ -3205,7 +3207,7 @@ class FileBrowserFragment : Fragment() {
         }
 
         val updateAdapter = {
-            if (isAdded) {
+            if (isAdded && ::fileAdapter.isInitialized) {
                 if (showAllAsIndexed != null) {
                     fileAdapter.submitList(sorted, showAllAsIndexed = showAllAsIndexed, hiddenPaths = hiddenPaths, showHidden = showHidden)
                 } else {
@@ -3247,30 +3249,32 @@ class FileBrowserFragment : Fragment() {
             if (requestFocus) {
                 recyclerFiles.post {
                     var focusPos = 0
-                    val exitedDir = lastExitedDir ?: (restoredFolderState?.targetChildPath?.let { File(it) })
-                    if (exitedDir != null) {
-                        val index = fileAdapter.findPosition(exitedDir.absolutePath)
-                        if (index != -1) {
-                            focusPos = index
+                    if (::fileAdapter.isInitialized) {
+                        val exitedDir = lastExitedDir ?: (restoredFolderState?.targetChildPath?.let { File(it) })
+                        if (exitedDir != null) {
+                            val index = fileAdapter.findPosition(exitedDir.absolutePath)
+                            if (index != -1) {
+                                focusPos = index
+                            } else if (restoredFolderState != null) {
+                                focusPos = restoredFolderState.position.coerceIn(0, (fileAdapter.itemCount - 1).coerceAtLeast(0))
+                            }
+                            lastExitedDir = null
                         } else if (restoredFolderState != null) {
                             focusPos = restoredFolderState.position.coerceIn(0, (fileAdapter.itemCount - 1).coerceAtLeast(0))
                         }
-                        lastExitedDir = null
-                    } else if (restoredFolderState != null) {
-                        focusPos = restoredFolderState.position.coerceIn(0, (fileAdapter.itemCount - 1).coerceAtLeast(0))
-                    }
-                    if (fileAdapter.itemCount > 0) {
-                        recyclerFiles.scrollToPosition(focusPos)
-                        recyclerFiles.post {
-                            val holder = recyclerFiles.findViewHolderForAdapterPosition(focusPos)
-                            if (holder != null) {
-                                holder.itemView.requestFocus()
-                                recyclerFiles.isFocusable = false
-                                recyclerFiles.isFocusableInTouchMode = false
-                            } else {
-                                recyclerFiles.isFocusable = true
-                                recyclerFiles.isFocusableInTouchMode = true
-                                recyclerFiles.requestFocus()
+                        if (fileAdapter.itemCount > 0) {
+                            recyclerFiles.scrollToPosition(focusPos)
+                            recyclerFiles.post {
+                                val holder = recyclerFiles.findViewHolderForAdapterPosition(focusPos)
+                                if (holder != null) {
+                                    holder.itemView.requestFocus()
+                                    recyclerFiles.isFocusable = false
+                                    recyclerFiles.isFocusableInTouchMode = false
+                                } else {
+                                    recyclerFiles.isFocusable = true
+                                    recyclerFiles.isFocusableInTouchMode = true
+                                    recyclerFiles.requestFocus()
+                                }
                             }
                         }
                     } else {
@@ -3342,7 +3346,9 @@ class FileBrowserFragment : Fragment() {
     }
 
     private fun onBatchRenameCompleted(renamedMap: Map<String, String> = emptyMap()) {
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
         if (isSearchActive && rawSearchResults != null) {
             if (renamedMap.isNotEmpty()) {
                 rawSearchResults = rawSearchResults?.map { f ->
@@ -3518,7 +3524,7 @@ class FileBrowserFragment : Fragment() {
     }
 
     fun handleBackPress(): Boolean {
-        if (fileAdapter.isSelectionMode) {
+        if (::fileAdapter.isInitialized && fileAdapter.isSelectionMode) {
             fileAdapter.exitSelectionMode()
             return true
         }
@@ -3684,7 +3690,9 @@ class FileBrowserFragment : Fragment() {
                             }
                         }
                         withContext(Dispatchers.Main) {
-                            fileAdapter.exitSelectionMode()
+                            if (::fileAdapter.isInitialized) {
+                                fileAdapter.exitSelectionMode()
+                            }
                             if (isSearchActive && rawSearchResults != null) {
                                 val oldPath = file.absolutePath
                                 val newPath = newFile.absolutePath
@@ -4175,13 +4183,19 @@ class FileBrowserFragment : Fragment() {
     fun getCurrentDir() = currentDir
     fun getRootPath(): String = rootPath
     fun getStorageLabel(): String = storageLabel
-    fun getSelectedFiles() = fileAdapter.getSelectedFiles()
-    fun isSelectionMode(): Boolean = fileAdapter.isSelectionMode
-    fun getSelectedCount(): Int = fileAdapter.getSelectedFiles().size
-    fun isAllSelected(): Boolean = fileAdapter.isAllSelected()
-    fun selectAll() = fileAdapter.selectAll()
-    fun deselectAll() = fileAdapter.deselectAll()
-    fun exitSelectionMode() = fileAdapter.exitSelectionMode()
+    fun getSelectedFiles(): List<File> = if (::fileAdapter.isInitialized) fileAdapter.getSelectedFiles() else emptyList()
+    fun isSelectionMode(): Boolean = if (::fileAdapter.isInitialized) fileAdapter.isSelectionMode else false
+    fun getSelectedCount(): Int = if (::fileAdapter.isInitialized) fileAdapter.getSelectedFiles().size else 0
+    fun isAllSelected(): Boolean = if (::fileAdapter.isInitialized) fileAdapter.isAllSelected() else false
+    fun selectAll() {
+        if (::fileAdapter.isInitialized) fileAdapter.selectAll()
+    }
+    fun deselectAll() {
+        if (::fileAdapter.isInitialized) fileAdapter.deselectAll()
+    }
+    fun exitSelectionMode() {
+        if (::fileAdapter.isInitialized) fileAdapter.exitSelectionMode()
+    }
     fun refresh() = loadDirectory(currentDir)
     fun getStorageId() = storageId
     fun getTabId(): String = arguments?.getString(ARG_TAB_ID) ?: ""
@@ -4197,7 +4211,8 @@ class FileBrowserFragment : Fragment() {
         showSortFilterSheet()
     }
     fun openViewModeDialog() {
-        ViewModeManager.showSelectionDialog(requireContext(), fileAdapter.viewMode) { selectedMode ->
+        val currentMode = if (::fileAdapter.isInitialized) fileAdapter.viewMode else ViewModeManager.load(requireContext())
+        ViewModeManager.showSelectionDialog(requireContext(), currentMode) { selectedMode ->
             val folderKey = SortFilterPreferenceManager.folderKey(currentDir.absolutePath)
             if (SortFilterPreferenceManager.hasFolderOverride(requireContext(), currentDir.absolutePath)) {
                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -4296,7 +4311,9 @@ class FileBrowserFragment : Fragment() {
     private fun performExtract(archives: List<File>, customDestFolder: File? = null, isSelectFolderMode: Boolean) {
         if (archives.isEmpty()) return
 
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
 
         val ctx = context ?: return
         val act = activity ?: return
@@ -5077,7 +5094,9 @@ class FileBrowserFragment : Fragment() {
     ) {
         val act = activity ?: return
         val ctx = context ?: return
-        fileAdapter.exitSelectionMode()
+        if (::fileAdapter.isInitialized) {
+            fileAdapter.exitSelectionMode()
+        }
 
         val progressDialog = ArchiveProgressDialog(act)
         var addJob: kotlinx.coroutines.Job? = null

@@ -351,7 +351,6 @@ class NetworkThumbnailCacheManager(private val context: Context) {
                                             finalBitmap = rawBmp?.let { scaleBitmap(it) }
                                         }
                                     } catch (oom: OutOfMemoryError) {
-                                        finalBitmap?.recycle()
                                         finalBitmap = null
                                         System.gc()
                                     } catch (e: Exception) {
@@ -411,10 +410,8 @@ class NetworkThumbnailCacheManager(private val context: Context) {
                                 )
                                 // Fix 6: Downscale immediately — do NOT hold a full 4K frame in memory.
                                 finalBitmap = rawFrame?.let { scaleBitmap(it) }
-                                rawFrame?.takeIf { it !== finalBitmap }?.recycle()
                             } catch (oom: OutOfMemoryError) {
                                 GoRoLog.e("UFM_CACHE", "OOM decoding frame for ${networkFile.path} — nudging GC", oom)
-                                finalBitmap?.recycle()
                                 finalBitmap = null
                                 System.gc()
                             } catch (e: Exception) {
@@ -471,11 +468,9 @@ class NetworkThumbnailCacheManager(private val context: Context) {
                                 if (ext == "jxl") {
                                     val rawBmp = decodeJxlBitmap(imageBytes)
                                     finalBitmap = rawBmp?.let { scaleBitmap(it) }
-                                    rawBmp?.takeIf { it !== finalBitmap }?.recycle()
                                 } else if (ext == "avif") {
                                     val rawBmp = decodeAvifBitmap(imageBytes)
                                     finalBitmap = rawBmp?.let { scaleBitmap(it) }
-                                    rawBmp?.takeIf { it !== finalBitmap }?.recycle()
                                 } else {
                                     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                                     BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
@@ -497,7 +492,6 @@ class NetworkThumbnailCacheManager(private val context: Context) {
                                         } catch (_: Exception) { null }
                                         val rawBmp = exifBmp ?: decodeAvifBitmap(imageBytes)
                                         finalBitmap = rawBmp?.let { scaleBitmap(it) }
-                                        rawBmp?.takeIf { it !== finalBitmap }?.recycle()
                                     }
                                 }
 
@@ -574,7 +568,6 @@ class NetworkThumbnailCacheManager(private val context: Context) {
                                     }
 
                                     finalBitmap = extractedFrame?.let { scaleBitmap(it) }
-                                    extractedFrame?.takeIf { it !== finalBitmap }?.recycle()
                                 }
                             }
                         }
