@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Native Linux Companion App (`UFM-Linux/`)**: Native Linux desktop companion built with Tauri 2, Rust, and React 19 for Wayland and X11 desktops (#45).
 - **Wayland-First Integration**: Stable `app_id` (`za.kilowatch.ufm-companion`) for tiling compositors (Sway, Hyprland, Niri), native decorations, and XDG desktop portal integration.
 - **Standalone AppImage & Deb Packaging**: Standalone `.AppImage` and `.deb` packaging with an Ubuntu 22.04 glibc 2.35 baseline.
-- **Unified Core Engine (`crates/ufm-core`)**: Pure Rust library encapsulating multi-NIC LAN discovery, TLS TOFU certificate fingerprint pinning, and streaming transfer buffers across desktop companion platforms.
+- **Native Rust Core Engine**: Multi-NIC UDP broadcast LAN discovery, TLS TOFU SHA-256 certificate fingerprint pinning, and streaming transfer buffers implemented in the Linux companion Rust backend (`UFM-Linux/src-tauri`).
 - **Automated Linux CI/CD Workflow**: GitHub Actions build workflow (`.github/workflows/linux-companion.yml`) for Linux companion compilation, tests, and release asset generation.
 - **Restored Windows Companion Backend**: Restored Windows desktop companion Rust backend (`UFM-Windows/src-tauri/`).
 
@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Standardized TV header bar (64dp) and safe padding (32dp), eliminating oversized 120dp margins and bloated empty states.
   - Rebuilt Sync and Advanced Sync TV edit screens into two-column widescreen forms with horizontal segmented button rows, replacing 1,700px wide stretched single columns.
   - Polished TV action dialogs with standard yellow primary action buttons and clean spacing.
+
+### Fixed
+- **Linux AppImage Blank Window (`Could not connect to localhost: Connection refused`)**: The published Linux companion AppImage/deb were built as Tauri *development* binaries with no embedded frontend assets, so the webview tried to load the Vite dev server (`http://localhost:1420`, `build.devUrl`) and showed a blank WebKit error page for end users. Linux companion releases are now built with `tauri build` in GitHub Actions, and the pipeline runs `UFM-Linux/scripts/verify-appimage.sh`, which fails the build if the production frontend bundle is not embedded.
 
 ## [2.1.7] — 2026-10-03
 

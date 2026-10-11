@@ -170,3 +170,6 @@ UFM-Linux/dist/
 UFM-Linux/dist-ssr/
 UFM-Linux/src-tauri/gen/
 UFM-Linux/*.local
+# The blanket `scripts/` rule above targets Android helper scripts; keep the
+# Linux companion release helpers tracked.
+!UFM-Linux/scripts/

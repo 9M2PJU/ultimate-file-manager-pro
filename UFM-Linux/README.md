@@ -116,6 +116,17 @@ If you are developing inside Windows Subsystem for Linux (WSL) without a physica
    GDK_BACKEND=wayland ./squashfs-root/AppRun
    ```
 
+> **Important:** always test a **production** build (`npm run tauri build`). A Tauri *dev*
+> build embeds no frontend assets and loads the Vite dev server at
+> `http://localhost:1420` instead — running such an `AppRun` without `npm run dev`
+> active shows a blank window ("Could not connect to localhost: Connection refused").
+> Run the verification step after every release build to confirm the frontend bundle
+> is embedded:
+> ```bash
+> npm run tauri build -- --bundles appimage,deb
+> npm run verify:appimage
+> ```
+
 ---
 
 ## License

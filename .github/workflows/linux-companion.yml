@@ -1,0 +1,96 @@
+name: Build Linux Companion
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "UFM-Linux/**"
+      - ".github/workflows/linux-companion.yml"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-companion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: AppImage + Deb (ubuntu-22.04)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            libxdo-dev \
+            libssl-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl wget file
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: UFM-Linux/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: UFM-Linux/src-tauri
+
+      - name: Install npm dependencies
+        working-directory: UFM-Linux
+        run: npm ci
+
+      - name: Build AppImage + Deb
+        working-directory: UFM-Linux
+        run: npm run tauri build -- --bundles appimage,deb
+
+      - name: Verify embedded frontend assets
+        working-directory: UFM-Linux
+        run: bash scripts/verify-appimage.sh
+
+      - name: Stage release assets
+        working-directory: UFM-Linux
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist-linux"
+          cp "$(ls src-tauri/target/release/bundle/appimage/*.AppImage | head -n1)" \
+             "$GITHUB_WORKSPACE/dist-linux/ufm-companion-x86_64.AppImage"
+          cp "$(ls src-tauri/target/release/bundle/deb/*.deb | head -n1)" \
+             "$GITHUB_WORKSPACE/dist-linux/ufm-companion_amd64.deb"
+          ls -la "$GITHUB_WORKSPACE/dist-linux"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ufm-companion-linux
+          path: dist-linux/*
+          if-no-files-found: error
+
+      - name: Attach release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" \
+              dist-linux/ufm-companion-x86_64.AppImage \
+              dist-linux/ufm-companion_amd64.deb --clobber
+          else
+            echo "No GitHub release exists for $GITHUB_REF_NAME yet."
+            echo "Assets were built and verified; re-run this workflow after the release is published to attach them."
+          fi
