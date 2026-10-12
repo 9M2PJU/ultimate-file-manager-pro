@@ -7,12 +7,12 @@ import { DeviceSelector } from "./components/DeviceSelector";
 import { ProgressBar } from "./components/ProgressBar";
 import { useUfmApi, UfmFile } from "./hooks/useUfmApi";
 import { languagesList } from "./hooks/translations";
+import { pickAndroidPackage, filenameFromPath, isApkOrXapk, isXapkFile } from "./lib/androidPackage";
 import logo from "./assets/logo.png";
 import "./App.css";
 
 function App() {
   const ufm = useUfmApi();
-  const sideloadInputRef = useRef<HTMLInputElement>(null);
   const { lang, handleLanguageChange, t, authExpiredDevice, setAuthExpiredDevice } = ufm;
 
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -229,6 +229,19 @@ function App() {
       setTransferLabel("Installation failed. View device screen for details.");
       setTimeout(() => setIsTransferActive(false), 5000);
     }
+  };
+
+  // --- Sideload via native file picker (Linux: <input type="file"> has no path) ---
+  const handlePickSideload = async () => {
+    if (!ufm.activeDevice) return;
+    const path = await pickAndroidPackage();
+    if (!path) return;
+    const name = filenameFromPath(path);
+    if (!isApkOrXapk(name)) {
+      alert("Invalid file format. Please choose a .apk or .xapk package.");
+      return;
+    }
+    handleSideload(path, name, isXapkFile(name));
   };
 
   // --- Copy File Actions (Upload/Download) ---
@@ -449,29 +462,9 @@ function App() {
             <Upload style={{ width: 20, height: 20 }} />
           </button>
 
-          <input
-            type="file"
-            ref={sideloadInputRef}
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files && files.length > 0) {
-                const file = files[0];
-                const name = file.name;
-                const isXapk = name.toLowerCase().endsWith(".xapk");
-                const path = (file as any).path;
-                if (path) {
-                  handleSideload(path, name, isXapk);
-                } else {
-                  alert("Could not determine absolute file path.");
-                }
-              }
-            }}
-            accept=".apk,.xapk"
-            style={{ display: "none" }}
-          />
           <button 
             className="btn-primary" 
-            onClick={() => sideloadInputRef.current?.click()}
+            onClick={handlePickSideload}
             disabled={!ufm.activeDevice}
             style={{ 
               borderRadius: "50%", width: "48px", height: "48px", 

@@ -1,5 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DownloadCloud, AlertTriangle } from "lucide-react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { pickAndroidPackage, filenameFromPath, isApkOrXapk, isXapkFile } from "../lib/androidPackage";
 
 interface SideloadZoneProps {
   onSideload: (localPath: string, filename: string, isXapk: boolean) => void;
@@ -8,80 +10,102 @@ interface SideloadZoneProps {
 
 export const SideloadZone: React.FC<SideloadZoneProps> = ({ onSideload, disabled }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const zoneRef = useRef<HTMLDivElement>(null);
+  const disabledRef = useRef(disabled);
+  const sideloadRef = useRef(onSideload);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
+
+  useEffect(() => {
+    sideloadRef.current = onSideload;
+  }, [onSideload]);
+
+  // On Linux/WebKitGTK, Tauri intercepts OS file drops and emits webview
+  // drag-drop events instead of DOM drop events, and `File.path` is never
+  // populated. We therefore listen to the Tauri event and use `paths`.
+  useEffect(() => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+
+    // Positions arrive in physical pixels relative to the webview's top-left.
+    const isOverZone = (x: number, y: number) => {
+      const el = zoneRef.current;
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const cx = x / dpr;
+      const cy = y / dpr;
+      return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+    };
+
+    const processPath = (path: string) => {
+      const filename = filenameFromPath(path);
+      if (!isApkOrXapk(filename)) {
+        alert("Invalid file format. Please drop a .apk or .xapk package.");
+        return;
+      }
+      sideloadRef.current(path, filename, isXapkFile(filename));
+    };
+
+    getCurrentWebview()
+      .onDragDropEvent((event) => {
+        const p = event.payload;
+        if (p.type === "leave") {
+          setIsDragging(false);
+          return;
+        }
+        if (disabledRef.current) {
+          setIsDragging(false);
+          return;
+        }
+        const over = isOverZone(p.position.x, p.position.y);
+        if (p.type === "enter" || p.type === "over") {
+          setIsDragging(over);
+        } else if (p.type === "drop") {
+          setIsDragging(false);
+          if (over && p.paths.length > 0) {
+            processPath(p.paths[0]);
+          }
+        }
+      })
+      .then((fn) => {
+        if (active) {
+          unlisten = fn;
+        } else {
+          fn();
+        }
+      });
+
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, []);
+
+  const handleClick = async () => {
     if (disabled) return;
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (disabled) return;
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processFile(files[0]);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processFile(files[0]);
-    }
-  };
-
-  const processFile = (file: File) => {
-    const filename = file.name;
-    const isApk = filename.toLowerCase().endsWith(".apk");
-    const isXapk = filename.toLowerCase().endsWith(".xapk");
-
-    if (!isApk && !isXapk) {
-      alert("Invalid file format. Please drop a .apk or .xapk package.");
+    const path = await pickAndroidPackage();
+    if (!path) return;
+    const filename = filenameFromPath(path);
+    if (!isApkOrXapk(filename)) {
+      alert("Invalid file format. Please choose a .apk or .xapk package.");
       return;
     }
-
-    // Tauri injects the absolute path into the File object
-    const absolutePath = (file as any).path;
-    if (!absolutePath) {
-      alert("Could not determine file path. If you are running in browser, compile the Tauri app.");
-      return;
-    }
-
-    onSideload(absolutePath, filename, isXapk);
-  };
-
-  const handleClick = () => {
-    if (disabled) return;
-    fileInputRef.current?.click();
+    onSideload(path, filename, isXapkFile(filename));
   };
 
   return (
     <div
+      ref={zoneRef}
       className={`sideload-zone glass-panel ${isDragging ? "dragging" : ""}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       onClick={handleClick}
       style={{
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? "not-allowed" : "pointer"
       }}
     >
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".apk,.xapk"
-        style={{ display: "none" }}
-      />
       <DownloadCloud className="sideload-icon" />
       <div className="sideload-title">
         {disabled ? "Connect to a Device to Install Apps" : "Remote App Sideload Zone"}
