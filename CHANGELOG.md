@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Linux AppImage Blank Window (`Could not connect to localhost: Connection refused`)**: The published Linux companion AppImage/deb were built as Tauri *development* binaries with no embedded frontend assets, so the webview tried to load the Vite dev server (`http://localhost:1420`, `build.devUrl`) and showed a blank WebKit error page for end users. Linux companion releases are now built with `tauri build` in GitHub Actions, and the pipeline runs `UFM-Linux/scripts/verify-appimage.sh`, which fails the build if the production frontend bundle is not embedded.
+- **Linux Companion Drag & Drop / File Picker**: Fixed APK/XAPK sideloading on Linux where Tauri intercepts OS file drops and WebKitGTK does not expose real file paths through the DOM (`File.path` is empty). Drag & drop now uses the Tauri webview drag-drop events (`onDragDropEvent`, absolute `paths`), and the browse action uses the native `@tauri-apps/plugin-dialog` picker (XDG portal friendly on Wayland).
+- **Linux Companion AppImage Verifier (CI)**: The `UFM-Linux/scripts/verify-appimage.sh` guard added with the embedded-assets fix could never pass: it looked for a hard-coded payload binary name (`ufm-companion`) that `tauri build` does not produce (the payload is the Cargo binary, `ufm-linux`), and its `strings | grep -q` check aborted itself under `set -o pipefail` (the upstream `strings` dies with SIGPIPE once `grep` finds a match). The verifier now discovers the payload binary by inspection and checks the extracted strings safely, so it reliably rejects dev builds and accepts production builds.
 
 ## [2.1.7] — 2026-10-03
 
