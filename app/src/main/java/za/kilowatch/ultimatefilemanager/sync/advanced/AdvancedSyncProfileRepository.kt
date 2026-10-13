@@ -17,7 +17,7 @@ class AdvancedSyncProfileRepository private constructor(private val context: Con
 
     private val profiles = mutableListOf<AdvancedSyncProfile>()
 
-    init { load() }
+    init { synchronized(profiles) { load() } }
 
     companion object {
         @Volatile private var instance: AdvancedSyncProfileRepository? = null
@@ -28,17 +28,17 @@ class AdvancedSyncProfileRepository private constructor(private val context: Con
         }
     }
 
-    fun getAll(): List<AdvancedSyncProfile> = profiles.toList()
+    fun getAll(): List<AdvancedSyncProfile> = synchronized(profiles) { profiles.toList() }
 
-    fun getById(id: String): AdvancedSyncProfile? = profiles.find { it.id == id }
+    fun getById(id: String): AdvancedSyncProfile? = synchronized(profiles) { profiles.find { it.id == id } }
 
-    fun save(profile: AdvancedSyncProfile) {
+    fun save(profile: AdvancedSyncProfile) = synchronized(profiles) {
         val idx = profiles.indexOfFirst { it.id == profile.id }
         if (idx >= 0) profiles[idx] = profile else profiles.add(profile)
         persist()
     }
 
-    fun delete(id: String) {
+    fun delete(id: String) = synchronized(profiles) {
         profiles.removeAll { it.id == id }
         persist()
     }
@@ -98,7 +98,7 @@ class AdvancedSyncProfileRepository private constructor(private val context: Con
         }
     }
 
-    private fun persist() {
+    private fun persist() = synchronized(profiles) {
         val arr = JSONArray()
         profiles.forEach { p ->
             arr.put(JSONObject().apply {

@@ -14,6 +14,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import za.kilowatch.ultimatefilemanager.UfmApplication
 import java.io.File
 
 /**
@@ -41,6 +44,7 @@ object InstantSyncWatcher {
     private const val DEBOUNCE_MS = 5000L
     private const val MIN_BATTERY_PERCENT = 15
 
+    private val lock = Any()
     private val watchers = mutableMapOf<String, FileObserver>()
     private val debounceHandlers = mutableMapOf<String, Handler>()
     private val debounceRunnables = mutableMapOf<String, Runnable>()
@@ -52,12 +56,6 @@ object InstantSyncWatcher {
      * the path is recorded here to let [stopWatchingVolume] decide which profiles belong to
      * a volume. Kept in lockstep with [watchers]: both are written in [startWatching] and
      * cleared in [stopWatching].
-     *
-     * Main thread only, like [watchers] — a plain `mutableMapOf` with no synchronisation. The
-     * eject path is the first *external* reader of these, so this is worth stating explicitly:
-     * `VolumeClaimReleaser` calls [stopWatchingVolume] and [activeWatchesUnder] from the main
-     * dispatcher, outside its `Dispatchers.IO` block. Moving those calls inside it would turn
-     * this into a data race.
      */
     private val watchPaths = mutableMapOf<String, String>()
 
@@ -97,11 +95,13 @@ object InstantSyncWatcher {
 
         val observer = createObserver(context, profile, dir)
         observer.startWatching()
-        watchers[profile.id] = observer
-        watchPaths[profile.id] = dir.absolutePath
-
         val handler = Handler(Looper.getMainLooper())
-        debounceHandlers[profile.id] = handler
+
+        synchronized(lock) {
+            watchers[profile.id] = observer
+            watchPaths[profile.id] = dir.absolutePath
+            debounceHandlers[profile.id] = handler
+        }
 
         Log.d(TAG, "Started watching ${profile.name} at $localPath")
     }
@@ -155,13 +155,23 @@ object InstantSyncWatcher {
      * Also clears any pending re-trigger for this profile.
      */
     fun stopWatching(profileId: String) {
-        pendingTriggers.remove(profileId)
-        watchPaths.remove(profileId)
-        watchers.remove(profileId)?.apply {
+        val observer: FileObserver?
+        val handler: Handler?
+        val runnable: Runnable?
+        synchronized(lock) {
+            pendingTriggers.remove(profileId)
+            watchPaths.remove(profileId)
+            observer = watchers.remove(profileId)
+            handler = debounceHandlers.remove(profileId)
+            runnable = debounceRunnables.remove(profileId)
+        }
+        observer?.apply {
             stopWatching()
             Log.d(TAG, "Stopped watching profile $profileId")
         }
-        debounceHandlers.remove(profileId)?.removeCallbacks(debounceRunnables.remove(profileId) ?: return)
+        if (handler != null && runnable != null) {
+            handler.removeCallbacks(runnable)
+        }
     }
 
     /**
@@ -183,7 +193,9 @@ object InstantSyncWatcher {
         if (root.isEmpty()) return 0
         val prefix = "$root/"
 
-        val ids = watchPaths.filterValues { it == root || it.startsWith(prefix) }.keys.toList()
+        val ids = synchronized(lock) {
+            watchPaths.filterValues { it == root || it.startsWith(prefix) }.keys.toList()
+        }
         ids.forEach { stopWatching(it) }
         if (ids.isNotEmpty()) {
             Log.d(TAG, "Stopped ${ids.size} instant-sync watcher(s) under $root")
@@ -208,29 +220,49 @@ object InstantSyncWatcher {
         val root = normalizePath(volumePath)
         if (root.isEmpty()) return emptyList()
         val prefix = "$root/"
-        return watchPaths.values.filter { it == root || it.startsWith(prefix) }
+        return synchronized(lock) {
+            watchPaths.values.filter { it == root || it.startsWith(prefix) }
+        }
     }
 
     /**
      * Stop all active watchers and clear all pending re-triggers.
      */
     fun stopAll() {
-        pendingTriggers.clear()
-        val ids = watchers.keys.toList()
+        val ids = synchronized(lock) {
+            pendingTriggers.clear()
+            watchPaths.clear()
+            watchers.keys.toList()
+        }
         ids.forEach { stopWatching(it) }
-        watchPaths.clear()
     }
 
     /**
      * Check if a profile is currently being watched.
      */
-    fun isWatching(profileId: String): Boolean = watchers.containsKey(profileId)
+    fun isWatching(profileId: String): Boolean = synchronized(lock) {
+        watchers.containsKey(profileId)
+    }
 
     /**
      * Re-register watchers for all profiles that have instant sync enabled.
      * Call this on app start / BOOT_COMPLETED.
+     *
+     * If called from the main thread, dispatches to a background thread to prevent
+     * blocking the UI looper on disk I/O (loading JSON, canonicalPath resolution,
+     * and stat calls).
      */
     fun rewatchAll(context: Context) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            Thread {
+                rewatchAll(context.applicationContext)
+            }.apply {
+                name = "ufm-instantsync-init"
+                isDaemon = true
+                start()
+            }
+            return
+        }
         stopAll()
         val repo = AdvancedSyncProfileRepository.getInstance(context)
         repo.getAll().filter { it.instantSyncEnabled && it.enabled }.forEach { profile ->
@@ -250,7 +282,10 @@ object InstantSyncWatcher {
         if (profile != null) {
             notifyFolderChangedBroadcast(context, profile.localUri)
         }
-        if (pendingTriggers.remove(profileId)) {
+        val hadPending = synchronized(lock) {
+            pendingTriggers.remove(profileId)
+        }
+        if (hadPending) {
             Log.d(TAG, "Pending trigger fired for profile $profileId after sync completion")
             if (profile != null && profile.enabled && profile.instantSyncEnabled) {
                 performTrigger(context, profile)
@@ -288,16 +323,26 @@ object InstantSyncWatcher {
 
     private fun onFileEvent(context: Context, profile: AdvancedSyncProfile, dir: File) {
         // Debounce: cancel previous pending trigger, schedule new one
-        val handler = debounceHandlers[profile.id] ?: Handler(Looper.getMainLooper()).also { debounceHandlers[profile.id] = it }
-        val previous = debounceRunnables[profile.id]
-        if (previous != null) {
-            handler.removeCallbacks(previous)
-        }
+        val handler: Handler
+        val runnable: Runnable
+        synchronized(lock) {
+            handler = debounceHandlers[profile.id] ?: Handler(Looper.getMainLooper()).also { debounceHandlers[profile.id] = it }
+            val previous = debounceRunnables[profile.id]
+            if (previous != null) {
+                handler.removeCallbacks(previous)
+            }
 
-        val runnable = Runnable {
-            performTrigger(context, profile)
+            runnable = Runnable {
+                try {
+                    UfmApplication.applicationScope.launch(Dispatchers.IO) {
+                        performTrigger(context, profile)
+                    }
+                } catch (_: Throwable) {
+                    performTrigger(context, profile)
+                }
+            }
+            debounceRunnables[profile.id] = runnable
         }
-        debounceRunnables[profile.id] = runnable
         handler.postDelayed(runnable, DEBOUNCE_MS)
     }
 
@@ -321,7 +366,7 @@ object InstantSyncWatcher {
         val infos = try {
             WorkManager.getInstance(context)
                 .getWorkInfosForUniqueWork(workName)
-                .get() // blocking — we are already on a background handler thread
+                .get() // blocking — safe because performTrigger runs on background IO thread
         } catch (e: Exception) {
             Log.w(TAG, "Could not query work info for $workName", e)
             emptyList()
@@ -332,7 +377,9 @@ object InstantSyncWatcher {
         }
 
         if (isActive) {
-            pendingTriggers.add(profile.id)
+            synchronized(lock) {
+                pendingTriggers.add(profile.id)
+            }
             Log.d(TAG, "Pending trigger queued for ${profile.name} — sync already running")
             return
         }

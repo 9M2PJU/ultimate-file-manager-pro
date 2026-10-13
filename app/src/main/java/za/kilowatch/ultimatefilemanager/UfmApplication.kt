@@ -497,6 +497,38 @@ class UfmApplication : Application(), SingletonImageLoader.Factory {
             } catch (e: Exception) {
                 Log.e(TAG, "AutoBackupPrefs pre-warm failed", e)
             }
+
+            // 8. Re-register instant sync watchers for all enabled sync profiles on background thread
+            //    (avoids synchronous profile JSON disk reads and canonicalPath/exists stat calls on UI thread)
+            try {
+                za.kilowatch.ultimatefilemanager.sync.advanced.InstantSyncWatcher.rewatchAll(this@UfmApplication)
+                Log.d(TAG, "InstantSyncWatcher watchers initialized (background)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize InstantSyncWatcher watchers", e)
+            }
+
+            // 9. Schedule daily Recycle Bin cleanup via WorkManager on background thread
+            try {
+                val cleanupRequest = androidx.work.PeriodicWorkRequestBuilder<za.kilowatch.ultimatefilemanager.recycle.RecycleBinCleanupWorker>(
+                    1, java.util.concurrent.TimeUnit.DAYS
+                ).build()
+                androidx.work.WorkManager.getInstance(this@UfmApplication).enqueueUniquePeriodicWork(
+                    za.kilowatch.ultimatefilemanager.recycle.RecycleBinCleanupWorker.WORK_NAME,
+                    androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                    cleanupRequest
+                )
+                Log.d(TAG, "Recycle Bin cleanup worker scheduled (background)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to schedule Recycle Bin cleanup", e)
+            }
+
+            // 10. Pre-warm ReviewPrefs
+            try {
+                za.kilowatch.ultimatefilemanager.util.ReviewPrefs.init(this@UfmApplication)
+                Log.d(TAG, "ReviewPrefs pre-warmed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "ReviewPrefs pre-warm failed", e)
+            }
             
         }.apply { name = "ufm-startup-io"; start() }
 
@@ -525,32 +557,6 @@ class UfmApplication : Application(), SingletonImageLoader.Factory {
 
         // Start ANR watchdog after super.onCreate() — main looper must exist first
         CrashReportManager.installAnrWatchdog(this)
-
-        // Initialize Review Prefs
-        za.kilowatch.ultimatefilemanager.util.ReviewPrefs.init(this)
-
-        // Schedule daily Recycle Bin cleanup
-        try {
-            val cleanupRequest = androidx.work.PeriodicWorkRequestBuilder<za.kilowatch.ultimatefilemanager.recycle.RecycleBinCleanupWorker>(
-                1, java.util.concurrent.TimeUnit.DAYS
-            ).build()
-            androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                za.kilowatch.ultimatefilemanager.recycle.RecycleBinCleanupWorker.WORK_NAME,
-                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
-                cleanupRequest
-            )
-            Log.d(TAG, "Recycle Bin cleanup worker scheduled")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to schedule Recycle Bin cleanup", e)
-        }
-
-        // Re-register instant sync watchers for all enabled sync profiles
-        try {
-            za.kilowatch.ultimatefilemanager.sync.advanced.InstantSyncWatcher.rewatchAll(this)
-            Log.d(TAG, "InstantSyncWatcher watchers initialized")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize InstantSyncWatcher watchers", e)
-        }
 
         // Register network connectivity listener to purge SMB pool on Wi-Fi network transitions.
         // Done on a background thread: registerDefaultNetworkCallback() is a synchronous binder
