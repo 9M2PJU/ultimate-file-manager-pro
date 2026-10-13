@@ -62,6 +62,7 @@ import za.kilowatch.ultimatefilemanager.storage.FileToolsBottomSheet
 import za.kilowatch.ultimatefilemanager.util.DeviceUtils
 import za.kilowatch.ultimatefilemanager.util.DialogInputHelper
 import za.kilowatch.ultimatefilemanager.util.NaturalSort
+import za.kilowatch.ultimatefilemanager.util.TransferProgressDialogHelper
 import za.kilowatch.ultimatefilemanager.util.FolderScrollState
 import za.kilowatch.ultimatefilemanager.util.GoRoLog
 import za.kilowatch.ultimatefilemanager.ui.PremiumShareActivity
@@ -3956,10 +3957,11 @@ class NetworkBrowserActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialogView.findViewById<View>(R.id.btnCancel)?.setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<View>(R.id.layoutThreadSection)?.visibility = View.GONE
 
         val job = lifecycleScope.launch(Dispatchers.IO) {
             val tempDir = File(cacheDir, "comp_${System.currentTimeMillis()}")
@@ -4292,10 +4294,11 @@ class NetworkBrowserActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialogView.findViewById<View>(R.id.btnCancel)?.setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<View>(R.id.layoutThreadSection)?.visibility = View.GONE
 
         val job = lifecycleScope.launch(Dispatchers.IO) {
             val tempExtractDir = File(cacheDir, "net_extract_${System.currentTimeMillis()}")
@@ -4974,15 +4977,24 @@ class NetworkBrowserActivity : AppCompatActivity() {
         val currentFileText = dialogView.findViewById<TextView>(R.id.txtProgressCurrentFile)
         val filesText = dialogView.findViewById<TextView>(R.id.txtProgressFiles)
         val dialogProgress = dialogView.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.progressFile)
+        val speedText = dialogView.findViewById<TextView>(R.id.txtProgressSpeed)
         statusText?.setText(R.string.transferring_files)
+
+        // Speed tracking state (captured in the onProgress closure below)
+        var speedLastBytes = 0L
+        var speedLastMs = android.os.SystemClock.elapsedRealtime()
+
+        val helper = TransferProgressDialogHelper(this, dialogView, isTv)
 
         val dialog = MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        helper.attachCancelButton(dialog) {
+            za.kilowatch.ultimatefilemanager.util.TransferManager.cancelAll()
+        }
 
         progressBar.visibility = View.VISIBLE
         isTransferring = true
@@ -5010,6 +5022,25 @@ class NetworkBrowserActivity : AppCompatActivity() {
                         dialogProgress?.progress = ((bytesCopied * 100L) / totalBytes).toInt()
                     } else {
                         dialogProgress?.isIndeterminate = true
+                    }
+                    // Compute MB/s from delta since last callback
+                    val nowMs = android.os.SystemClock.elapsedRealtime()
+                    val deltaMs = nowMs - speedLastMs
+                    if (bytesCopied == 0L) {
+                        // New file starting — reset tracker and clear speed label
+                        speedLastBytes = 0L
+                        speedLastMs = nowMs
+                        speedText?.text = ""
+                        helper.updateSpeed(0.0)
+                    } else if (deltaMs >= 500L) {
+                        val deltaBytes = bytesCopied - speedLastBytes
+                        if (deltaBytes > 0) {
+                            val mbps = (deltaBytes.toDouble() / (deltaMs / 1000.0)) / (1024.0 * 1024.0)
+                            speedText?.text = getString(R.string.transfer_speed_mbs, mbps)
+                            helper.updateSpeed(mbps)
+                        }
+                        speedLastBytes = bytesCopied
+                        speedLastMs = nowMs
                     }
                 } catch (_: Exception) {}
             }

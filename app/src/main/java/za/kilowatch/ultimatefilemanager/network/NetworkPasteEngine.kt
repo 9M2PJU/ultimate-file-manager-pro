@@ -129,7 +129,7 @@ object NetworkPasteEngine {
             }
 
             val fileIndexCounter = AtomicInteger(0)
-            val concurrency = if (share.type == ShareType.FTP || share.type == ShareType.SFTP) share.effectiveThreads(appContext).coerceIn(1, 8) else 1
+            val concurrency = if (share.type == ShareType.FTP || share.type == ShareType.SFTP || share.type == ShareType.SMB) share.effectiveThreads(appContext).coerceIn(1, 8) else 1
             val semaphore = Semaphore(concurrency)
 
             suspend fun processNetItem(

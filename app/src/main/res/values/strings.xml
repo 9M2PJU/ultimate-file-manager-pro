@@ -654,16 +654,38 @@
     <string name="settings_network_open_cache_subtitle_on">Enabled — cache before opening</string>
     <string name="settings_network_open_cache_subtitle_off">Disabled — direct stream (default)</string>
 
-    <!-- FTP & SFTP Multi-Threading Settings -->
-    <string name="settings_network_transfer_threads_title">FTP &amp; SFTP Multi-threading</string>
+    <!-- Network Transfer Multi-Threading Settings -->
+    <string name="settings_network_transfer_threads_title">FTP, SFTP &amp; SMB Multi-threading</string>
     <string name="settings_network_transfer_threads_dialog_title">Transfer Threads</string>
+    <string name="settings_network_transfer_threads_dialog_subtitle">Select the number of simultaneous connections for faster network file transfers</string>
     <string name="settings_network_transfer_threads_subtitle">%1$d threads — simultaneous connections for faster transfers</string>
     <string name="settings_network_transfer_threads_single">1 thread (Single-threaded)</string>
     <string name="settings_network_transfer_threads_option">%1$d threads</string>
     <string name="settings_network_transfer_threads_recommended">%1$d threads (Recommended)</string>
-    <string name="backup_pref_network_transfer_threads">FTP &amp; SFTP Multi-threading Settings</string>
+    <string name="settings_network_transfer_threads_maximum">%1$d threads (Maximum)</string>
+    <string name="settings_network_transfer_threads_2">2 threads</string>
+    <string name="settings_network_transfer_threads_4">4 threads (Recommended)</string>
+    <string name="settings_network_transfer_threads_6">6 threads</string>
+    <string name="settings_network_transfer_threads_8">8 threads (Maximum)</string>
+    <string name="settings_network_transfer_threads_desc_1">Single connection, transfers files sequentially</string>
+    <string name="settings_network_transfer_threads_desc_2">Light parallelism, ideal for slower connections</string>
+    <string name="settings_network_transfer_threads_desc_4">Optimal balance of speed and stability for Wi-Fi and LAN</string>
+    <string name="settings_network_transfer_threads_desc_6">High throughput for Gigabit networks and fast Wi-Fi</string>
+    <string name="settings_network_transfer_threads_desc_8">Maximum throughput for multi-gigabit LAN and Wi-Fi 7</string>
+    <string name="settings_network_transfer_threads_toast">Transfer threads set to %1$d</string>
+    <string name="backup_pref_network_transfer_threads">FTP, SFTP &amp; SMB Multi-threading Settings</string>
     <string name="network_field_threads">Transfer threads</string>
     <string name="network_threads_default">Default (%1$d threads)</string>
+
+    <!-- Transfer Multi-Threading Telemetry -->
+    <string name="transfer_threads_header">Threads (%1$d active)</string>
+    <string name="transfer_threads_header_single">Thread (1 active)</string>
+    <string name="transfer_per_thread_placeholder">-- MB/s</string>
+    <string name="transfer_per_thread_format">Per thread: %1$.1f MB/s</string>
+    <string name="transfer_per_thread_single_format">Single thread: %1$.1f MB/s</string>
+    <string name="transfer_thread_initial">Thread %1$d: --</string>
+    <string name="transfer_thread_speed_item">Thread %1$d: %2$.1f MB/s</string>
+    <string name="transfer_thread_speed_single">Thread %1$d: %2$.1f MB/s (Single-threaded)</string>
 
     <!-- Open Source Licenses -->
     <string name="policy_section_agreements">Policies &amp; Agreements</string>
@@ -2382,6 +2404,7 @@
     <string name="transfer_cancelled">Transfer cancelled</string>
     <string name="file_fileindex_of_totalfiles_filename">File %1$d of %2$d — %3$s</string>
     <string name="copiedstr_totalstr">%1$s / %2$s</string>
+    <string name="transfer_speed_mbs">%1$.1f MB/s</string>
     <string name="cannot_read_source_file">Cannot read source file</string>
     <string name="encrypted_successcount_files_to_vault">Encrypted %1$d file(s) to vault</string>
     <string name="failed_to_encrypt_files">Failed to encrypt files</string>

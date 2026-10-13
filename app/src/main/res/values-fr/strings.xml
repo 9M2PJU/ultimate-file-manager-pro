@@ -1857,12 +1857,15 @@ Activée — mise en cache avant ouverture
 Désactivée — flux direct (par défaut)
 </string>
 
-    <!-- FTP & SFTP Multi-Threading Settings -->
+    <!-- Network Transfer Multi-Threading Settings -->
     <string name="settings_network_transfer_threads_title">
-Multithreading FTP &amp;amp; SFTP
+FTP, SFTP &amp; SMB Multi-threading
 </string>
     <string name="settings_network_transfer_threads_dialog_title">
 Threads de transfert
+</string>
+    <string name="settings_network_transfer_threads_dialog_subtitle">
+Select the number of simultaneous connections for faster network file transfers
 </string>
     <string name="settings_network_transfer_threads_subtitle">
 %1$d threads — connexions simultanées pour des transferts plus rapides
@@ -1876,14 +1879,73 @@ Threads de transfert
     <string name="settings_network_transfer_threads_recommended">
 %1$d threads (Recommandé)
 </string>
+    <string name="settings_network_transfer_threads_maximum">
+%1$d threads (Maximum)
+</string>
+    <string name="settings_network_transfer_threads_2">
+2 threads
+</string>
+    <string name="settings_network_transfer_threads_4">
+4 threads (Recommended)
+</string>
+    <string name="settings_network_transfer_threads_6">
+6 threads
+</string>
+    <string name="settings_network_transfer_threads_8">
+8 threads (Maximum)
+</string>
+    <string name="settings_network_transfer_threads_desc_1">
+Single connection, transfers files sequentially
+</string>
+    <string name="settings_network_transfer_threads_desc_2">
+Light parallelism, ideal for slower connections
+</string>
+    <string name="settings_network_transfer_threads_desc_4">
+Optimal balance of speed and stability for Wi-Fi and LAN
+</string>
+    <string name="settings_network_transfer_threads_desc_6">
+High throughput for Gigabit networks and fast Wi-Fi
+</string>
+    <string name="settings_network_transfer_threads_desc_8">
+Maximum throughput for multi-gigabit LAN and Wi-Fi 7
+</string>
+    <string name="settings_network_transfer_threads_toast">
+Transfer threads set to %1$d
+</string>
     <string name="backup_pref_network_transfer_threads">
-Paramètres de multithreading FTP &amp;amp; SFTP
+FTP, SFTP &amp; SMB Multi-threading Settings
 </string>
     <string name="network_field_threads">
 Threads de transfert
 </string>
     <string name="network_threads_default">
 Par défaut (%1$d threads)
+</string>
+
+    <!-- Transfer Multi-Threading Telemetry -->
+    <string name="transfer_threads_header">
+Threads (%1$d active)
+</string>
+    <string name="transfer_threads_header_single">
+Thread (1 active)
+</string>
+    <string name="transfer_per_thread_placeholder">
+-- MB/s
+</string>
+    <string name="transfer_per_thread_format">
+Per thread: %1$.1f MB/s
+</string>
+    <string name="transfer_per_thread_single_format">
+Single thread: %1$.1f MB/s
+</string>
+    <string name="transfer_thread_initial">
+Thread %1$d: --
+</string>
+    <string name="transfer_thread_speed_item">
+Thread %1$d: %2$.1f MB/s
+</string>
+    <string name="transfer_thread_speed_single">
+Thread %1$d: %2$.1f MB/s (Single-threaded)
 </string>
 
     <!-- Open Source Licenses -->
@@ -6793,6 +6855,9 @@ Fichier %1$d sur %2$d — %3$s
 </string>
     <string name="copiedstr_totalstr">
 %1$s / %2$s
+</string>
+    <string name="transfer_speed_mbs">
+%1$.1f MB/s
 </string>
     <string name="cannot_read_source_file">
 Impossible de lire le fichier source
@@ -12602,6 +12667,64 @@ Modifier les balises audio
 </string>
     <string name="music_tag_specs">
 Spécifications techniques
+</string>
+    <!-- Music Tag Online Sync & High-Res Cover Picker -->
+    <string name="music_tag_btn_search_online_cover">
+Search Online Art
+</string>
+    <string name="music_tag_btn_musicbrainz_sync">
+Identify Online (MusicBrainz)
+</string>
+    <string name="music_tag_cover_picker_title">
+Search Online Artwork
+</string>
+    <string name="music_tag_search_covers_hint">
+Artist and Album name…
+</string>
+    <string name="music_tag_searching_artwork">
+Searching Apple Music, Deezer &amp; Cover Art Archive…
+</string>
+    <string name="music_tag_no_artwork_found">
+No artwork found for this query
+</string>
+    <string name="music_tag_cover_applied">
+Applied online album artwork
+</string>
+    <string name="music_tag_cover_download_error">
+Failed to download artwork
+</string>
+    <string name="music_tag_musicbrainz_search_title">
+MusicBrainz Tag Search
+</string>
+    <string name="music_tag_search_query_hint">
+Track title or Album name…
+</string>
+    <string name="music_tag_searching_musicbrainz">
+Searching MusicBrainz…
+</string>
+    <string name="music_tag_no_musicbrainz_results">
+No matching recordings or releases found
+</string>
+    <string name="music_tag_diff_title">
+Review Online Tags
+</string>
+    <string name="music_tag_diff_subtitle">
+Select fields to apply to track
+</string>
+    <string name="music_tag_diff_apply">
+Apply Selected Tags
+</string>
+    <string name="music_tag_select_all">
+Select All
+</string>
+    <string name="music_tag_tab_recordings">
+Recordings
+</string>
+    <string name="music_tag_tab_releases">
+Albums / Releases
+</string>
+    <string name="music_tag_tracks_count">
+%d tracks
 </string>
     <!-- Icon Tap Edit Mode -->
     <string name="settings_icon_tap_edit_mode_title">

@@ -3145,10 +3145,11 @@ class NetworkBrowserFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(ctx, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialogView.findViewById<View>(R.id.btnCancel)?.setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<View>(R.id.layoutThreadSection)?.visibility = View.GONE
 
         val job = lifecycleScope.launch(Dispatchers.IO) {
             val tempDir = File(ctx.cacheDir, "comp_${System.currentTimeMillis()}")
@@ -3474,10 +3475,11 @@ class NetworkBrowserFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(ctx, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialogView.findViewById<View>(R.id.btnCancel)?.setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<View>(R.id.layoutThreadSection)?.visibility = View.GONE
 
         val job = lifecycleScope.launch(Dispatchers.IO) {
             val tempExtractDir = File(ctx.cacheDir, "net_extract_${System.currentTimeMillis()}")

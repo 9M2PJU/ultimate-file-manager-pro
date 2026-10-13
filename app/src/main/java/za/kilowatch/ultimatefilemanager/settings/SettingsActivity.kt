@@ -850,6 +850,7 @@ class SettingsActivity : AppCompatActivity() {
             setupTvCardFocus(cardCacheCopy)
             findViewById<View>(R.id.cardQuickTransfer)?.let { setupTvCardFocus(it) }
             findViewById<View>(R.id.cardNetworkOpenCache)?.let { setupTvCardFocus(it) }
+            findViewById<View>(R.id.cardNetworkTransferThreads)?.let { setupTvCardFocus(it) }
             findViewById<View>(R.id.cardTvBackgroundServer)?.let { setupTvCardFocus(it) }
             cardTwinWindowLayout?.let { setupTvCardFocus(it) }
             cardTwinWindowStartup?.let { setupTvCardFocus(it) }
@@ -1808,28 +1809,61 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showNetworkTransferThreadsDialog() {
+        val layoutRes = if (isTv) R.layout.dialog_network_transfer_threads_tv else R.layout.dialog_network_transfer_threads
+        val dialogView = LayoutInflater.from(this).inflate(layoutRes, null)
+
         val currentThreads = NetworkTransferPreferenceManager.getThreadCount(this)
-        val options = NetworkTransferPreferenceManager.AVAILABLE_THREAD_OPTIONS
-        val labels = options.map { threads ->
-            when (threads) {
-                1 -> getString(R.string.settings_network_transfer_threads_single)
-                4 -> getString(R.string.settings_network_transfer_threads_recommended, threads)
-                else -> getString(R.string.settings_network_transfer_threads_option, threads)
+
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
+            .setView(dialogView)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+
+        val options = listOf(
+            Triple(R.id.btnThreads1, R.id.checkThreads1, 1),
+            Triple(R.id.btnThreads2, R.id.checkThreads2, 2),
+            Triple(R.id.btnThreads4, R.id.checkThreads4, 4),
+            Triple(R.id.btnThreads6, R.id.checkThreads6, 6),
+            Triple(R.id.btnThreads8, R.id.checkThreads8, 8)
+        )
+
+        var defaultFocusView: View? = null
+
+        options.forEach { (btnId, checkId, threads) ->
+            val btn = dialogView.findViewById<View>(btnId)
+            val check = dialogView.findViewById<ImageView>(checkId)
+            val isSelected = currentThreads == threads
+            check?.visibility = if (isSelected) View.VISIBLE else View.GONE
+            if (isSelected) {
+                defaultFocusView = btn
             }
-        }.toTypedArray()
 
-        val selectedIndex = options.indexOf(currentThreads).coerceAtLeast(0)
-
-        MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
-            .setTitle(R.string.settings_network_transfer_threads_dialog_title)
-            .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
-                val selectedThreads = options[which]
-                NetworkTransferPreferenceManager.setThreadCount(this, selectedThreads)
-                updateNetworkTransferThreadsSubtitle(selectedThreads)
+            btn?.setOnClickListener {
                 dialog.dismiss()
+                NetworkTransferPreferenceManager.setThreadCount(this, threads)
+                updateNetworkTransferThreadsSubtitle(threads)
+                android.widget.Toast.makeText(
+                    this,
+                    getString(R.string.settings_network_transfer_threads_toast, threads),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+
+            if (isTv && btn != null) {
+                setupTvCardFocus(btn)
+            }
+        }
+
+        dialogView.findViewById<View>(R.id.btnCancel)?.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+
+        if (isTv) {
+            (defaultFocusView ?: dialogView.findViewById(R.id.btnThreads4))?.requestFocus()
+        }
     }
 
     private fun setupQuickAccessSection() {

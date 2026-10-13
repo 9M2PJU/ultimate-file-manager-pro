@@ -29,6 +29,7 @@ import za.kilowatch.ultimatefilemanager.checksum.*
 import za.kilowatch.ultimatefilemanager.settings.ApkExtractPreferenceManager
 import za.kilowatch.ultimatefilemanager.util.ApkMetadataExtractor
 import za.kilowatch.ultimatefilemanager.util.DeviceUtils
+import za.kilowatch.ultimatefilemanager.util.TransferProgressDialogHelper
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.material.progressindicator.LinearProgressIndicator
@@ -1310,23 +1311,29 @@ class TwinWindowActivity : AppCompatActivity() {
         val txtFiles = dialogView.findViewById<TextView>(R.id.txtProgressFiles)
         val txtCurrentFile = dialogView.findViewById<TextView>(R.id.txtProgressCurrentFile)
         val txtSize = dialogView.findViewById<TextView>(R.id.txtProgressSize)
+        val txtSpeed = dialogView.findViewById<TextView>(R.id.txtProgressSpeed)
         val progressFile = dialogView.findViewById<LinearProgressIndicator>(R.id.progressFile)
 
         txtTitle.text = if (isMove) getString(R.string.moving_files) else getString(R.string.copying_files_1)
         txtFiles.text = getString(R.string.item_0_totalfiles, totalFiles)
 
+        val helper = TransferProgressDialogHelper(this@TwinWindowActivity, dialogView, isTv)
+
         val dialog = MaterialAlertDialogBuilder(this@TwinWindowActivity, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel) { _, _ ->
-                isCancelled = true
-                runCatching { currentTransferConnection?.close() }
-                currentTransferConnection = null
-            }
             .create()
 
         dialog.show()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        helper.attachCancelButton(dialog) {
+            isCancelled = true
+            runCatching { currentTransferConnection?.close() }
+            currentTransferConnection = null
+        }
+
+        var speedLastBytes = 0L
+        var speedLastMs = android.os.SystemClock.elapsedRealtime()
 
         val onProgress: (String, Long, Long, Int, Int) -> Unit = { fileName, copied, total, index, totalCount ->
             runOnUiThread {
@@ -1344,6 +1351,24 @@ class TwinWindowActivity : AppCompatActivity() {
                     } else {
                         progressFile.isIndeterminate = true
                         txtSize.setText(R.string.processing)
+                    }
+
+                    val nowMs = android.os.SystemClock.elapsedRealtime()
+                    val deltaMs = nowMs - speedLastMs
+                    if (copied == 0L) {
+                        speedLastBytes = 0L
+                        speedLastMs = nowMs
+                        txtSpeed?.text = ""
+                        helper.updateSpeed(0.0)
+                    } else if (deltaMs >= 500L) {
+                        val deltaBytes = copied - speedLastBytes
+                        if (deltaBytes > 0) {
+                            val mbps = (deltaBytes.toDouble() / (deltaMs / 1000.0)) / (1024.0 * 1024.0)
+                            txtSpeed?.text = getString(R.string.transfer_speed_mbs, mbps)
+                            helper.updateSpeed(mbps)
+                        }
+                        speedLastBytes = copied
+                        speedLastMs = nowMs
                     }
                 }
             }

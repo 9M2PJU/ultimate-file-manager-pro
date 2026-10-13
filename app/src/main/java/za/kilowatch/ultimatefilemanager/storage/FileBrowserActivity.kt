@@ -55,6 +55,7 @@ import za.kilowatch.ultimatefilemanager.util.DeviceUtils
 import za.kilowatch.ultimatefilemanager.util.DialogInputHelper
 import za.kilowatch.ultimatefilemanager.util.MediaScannerNotifier
 import za.kilowatch.ultimatefilemanager.util.NaturalSort
+import za.kilowatch.ultimatefilemanager.util.TransferProgressDialogHelper
 import za.kilowatch.ultimatefilemanager.UfmApplication
 import za.kilowatch.ultimatefilemanager.indexing.IndexingRepository
 import za.kilowatch.ultimatefilemanager.ui.PremiumShareActivity
@@ -5126,52 +5127,36 @@ class FileBrowserActivity : AppCompatActivity(), VolumeEjectHost {
         val isExtractOperation = targetSlots.any { it.isExtract }
         val effectiveDestDir = quickTransferDestDir ?: currentDir
 
-        // ── Build progress dialog ──────────────────────────────────────
-        val dialogView = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 8)
-        }
-        val statusText = android.widget.TextView(this).apply {
-            text = getString(R.string.preparing)
-            textSize = 14f
-        }
-        val detailText = android.widget.TextView(this).apply {
-            text = ""
-            textSize = 12f
-            setTextColor(0xFF888888.toInt())
-        }
-        val dialogProgress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            isIndeterminate = false
-            max = 1000
-            progress = 0
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 16; bottomMargin = 8 }
-        }
-        val hintText = android.widget.TextView(this).apply {
-            text = getString(R.string.press_cancel_to_stop_the_transfer)
-            textSize = 11f
-            setTextColor(0xFF999999.toInt())
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 12 }
-        }
-        dialogView.addView(statusText)
-        dialogView.addView(dialogProgress)
-        dialogView.addView(detailText)
-        dialogView.addView(hintText)
+        // ── Build progress dialog (mobile / TV) ────────────────────────
+        val isTvDevice = DeviceUtils.isTvDevice(this)
+        val layoutRes = if (isTvDevice) R.layout.dialog_transfer_progress_tv else R.layout.dialog_transfer_progress
+        val dialogView = layoutInflater.inflate(layoutRes, null)
+        val txtTitle = dialogView.findViewById<TextView>(R.id.txtProgressTitle)
+        val filesText = dialogView.findViewById<TextView>(R.id.txtProgressFiles)
+        val statusText = dialogView.findViewById<TextView>(R.id.txtProgressCurrentFile)
+        val detailText = dialogView.findViewById<TextView>(R.id.txtProgressSize)
+        val dialogProgress = dialogView.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.progressFile)
+        val speedText = dialogView.findViewById<TextView>(R.id.txtProgressSpeed)
+        txtTitle?.setText(R.string.transferring_files)
+        statusText?.setText(R.string.preparing)
 
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.transferring_files)
+        val helper = TransferProgressDialogHelper(this, dialogView, isTvDevice)
+
+        val dialog = MaterialAlertDialogBuilder(this, R.style.UFM_Dialog)
             .setView(dialogView)
             .setCancelable(false)
-            .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.show()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        helper.attachCancelButton(dialog) {
+            za.kilowatch.ultimatefilemanager.util.TransferManager.cancelAll()
+        }
 
         isTransferring = true
+
+        // Speed tracking state (captured in the onProgress closure below)
+        var speedLastBytes = 0L
+        var speedLastMs = android.os.SystemClock.elapsedRealtime()
 
         // ── UI adapter — TransferManager drives these callbacks on the main thread ──
         val ui = object : za.kilowatch.ultimatefilemanager.util.TransferManager.TransferUi {
@@ -5186,10 +5171,34 @@ class FileBrowserActivity : AppCompatActivity(), VolumeEjectHost {
                 try {
                     val copiedStr = android.text.format.Formatter.formatFileSize(this@FileBrowserActivity, bytesCopied)
                     val totalStr = if (totalBytes > 0) android.text.format.Formatter.formatFileSize(this@FileBrowserActivity, totalBytes) else "?"
-                    statusText.text = if (totalFiles > 1) getString(R.string.file_fileindex_of_totalfiles_filename, fileIndex, totalFiles, fileName) else fileName
-                    detailText.text = getString(R.string.copiedstr_totalstr, copiedStr, totalStr)
+                    if (totalFiles > 1) {
+                        filesText?.text = getString(R.string.file_fileindex_of_totalfiles_filename, fileIndex, totalFiles, fileName)
+                    }
+                    statusText?.text = fileName
+                    detailText?.text = getString(R.string.copiedstr_totalstr, copiedStr, totalStr)
                     if (totalBytes > 0) {
-                        dialogProgress.progress = ((bytesCopied * 1000L) / totalBytes).toInt()
+                        dialogProgress?.isIndeterminate = false
+                        dialogProgress?.progress = ((bytesCopied * 100L) / totalBytes).toInt()
+                    } else {
+                        dialogProgress?.isIndeterminate = true
+                    }
+                    // Compute MB/s from delta since last callback
+                    val nowMs = android.os.SystemClock.elapsedRealtime()
+                    val deltaMs = nowMs - speedLastMs
+                    if (bytesCopied == 0L) {
+                        speedLastBytes = 0L
+                        speedLastMs = nowMs
+                        speedText?.text = ""
+                        helper.updateSpeed(0.0)
+                    } else if (deltaMs >= 500L) {
+                        val deltaBytes = bytesCopied - speedLastBytes
+                        if (deltaBytes > 0) {
+                            val mbps = (deltaBytes.toDouble() / (deltaMs / 1000.0)) / (1024.0 * 1024.0)
+                            speedText?.text = getString(R.string.transfer_speed_mbs, mbps)
+                            helper.updateSpeed(mbps)
+                        }
+                        speedLastBytes = bytesCopied
+                        speedLastMs = nowMs
                     }
                 } catch (_: Exception) {}
             }

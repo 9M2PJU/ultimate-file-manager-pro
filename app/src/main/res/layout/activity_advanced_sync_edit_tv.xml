@@ -263,7 +263,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:text="@string/dest_network_share"
+                            android:text="@string/destination"
                             android:textColor="@color/tv_text_secondary"
                             android:textSize="14sp"
                             android:fontFamily="sans-serif-bold" />
@@ -364,7 +364,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/filter_mode"
+                            android:text="@string/sync_filtering"
                             android:textColor="@color/tv_text_secondary"
                             android:textSize="14sp"
                             android:fontFamily="sans-serif-bold"
@@ -382,7 +382,7 @@
                                 android:layout_height="40dp"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="4dp"
-                                android:text="@string/all_files"
+                                android:text="@string/filter_all_types"
                                 android:textSize="12.5sp"
                                 android:fontFamily="sans-serif-medium"
                                 android:background="@drawable/selector_tv_button"
@@ -395,7 +395,7 @@
                                 android:layout_height="40dp"
                                 android:layout_weight="1"
                                 android:layout_marginHorizontal="4dp"
-                                android:text="@string/only_extensions"
+                                android:text="@string/filter_only"
                                 android:textSize="12.5sp"
                                 android:fontFamily="sans-serif-medium"
                                 android:background="@drawable/selector_tv_button"
@@ -408,7 +408,7 @@
                                 android:layout_height="40dp"
                                 android:layout_weight="1"
                                 android:layout_marginStart="4dp"
-                                android:text="@string/skip_extensions"
+                                android:text="@string/filter_skip"
                                 android:textSize="12.5sp"
                                 android:fontFamily="sans-serif-medium"
                                 android:background="@drawable/selector_tv_button"
@@ -429,7 +429,7 @@
                                 android:id="@+id/txtFilterExtensionsLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/extensions_comma_separated"
+                                android:text="@string/filter_extensions_label"
                                 android:textColor="@color/tv_text_secondary"
                                 android:textSize="13sp" />
 
@@ -458,7 +458,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="10dp"
-                            android:hint="@string/exclude_patterns_eg_tmp_bak"
+                            android:hint="@string/filter_exclude_label"
                             app:boxStrokeColor="@color/tv_accent"
                             app:hintTextColor="@color/tv_accent"
                             android:textColorHint="@color/tv_text_hint">
@@ -476,7 +476,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:hint="@string/include_patterns_eg_data_report"
+                            android:hint="@string/filter_include_label"
                             app:boxStrokeColor="@color/tv_accent"
                             app:hintTextColor="@color/tv_accent"
                             android:textColorHint="@color/tv_text_hint">
@@ -502,7 +502,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="4dp"
-                                android:hint="@string/min_size_mb"
+                                android:hint="@string/filter_min_size"
                                 app:boxStrokeColor="@color/tv_accent"
                                 app:hintTextColor="@color/tv_accent"
                                 android:textColorHint="@color/tv_text_hint">
@@ -534,7 +534,7 @@
                                 android:layout_weight="1"
                                 android:layout_marginStart="8dp"
                                 android:layout_marginEnd="4dp"
-                                android:hint="@string/max_size_mb"
+                                android:hint="@string/filter_max_size"
                                 app:boxStrokeColor="@color/tv_accent"
                                 app:hintTextColor="@color/tv_accent"
                                 android:textColorHint="@color/tv_text_hint">
@@ -572,7 +572,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="4dp"
-                                android:hint="@string/min_age_days"
+                                android:hint="@string/filter_min_age"
                                 app:boxStrokeColor="@color/tv_accent"
                                 app:hintTextColor="@color/tv_accent"
                                 android:textColorHint="@color/tv_text_hint">
@@ -592,7 +592,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginStart="4dp"
-                                android:hint="@string/max_age_days"
+                                android:hint="@string/filter_max_age"
                                 app:boxStrokeColor="@color/tv_accent"
                                 app:hintTextColor="@color/tv_accent"
                                 android:textColorHint="@color/tv_text_hint">
@@ -900,7 +900,7 @@
                             android:layout_marginTop="14dp"
                             android:textColor="@color/tv_text_primary"
                             android:textSize="14sp"
-                            android:text="@string/instant_sync_on_file_change"
+                            android:text="@string/trigger_instant"
                             android:focusable="true" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
@@ -910,7 +910,7 @@
                             android:layout_marginTop="10dp"
                             android:textColor="@color/tv_text_primary"
                             android:textSize="14sp"
-                            android:text="@string/wifi_only"
+                            android:text="@string/network_wifi_only"
                             android:focusable="true" />
 
                     </LinearLayout>
@@ -920,7 +920,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/sync_section_conflicts_deletions"
+                    android:text="@string/sync_section_conflict"
                     android:textColor="@color/tv_accent"
                     android:textSize="12.5sp"
                     android:fontFamily="sans-serif-black"
@@ -955,7 +955,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/conflict_resolution"
+                                android:text="@string/conflict_handling"
                                 android:textColor="@color/tv_text_secondary"
                                 android:textSize="14sp"
                                 android:fontFamily="sans-serif-bold"
@@ -972,7 +972,7 @@
                                     android:layout_height="40dp"
                                     android:layout_weight="1"
                                     android:layout_marginEnd="4dp"
-                                    android:text="@string/skip_conflict"
+                                    android:text="@string/conflict_strategy_skip"
                                     android:textSize="12.5sp"
                                     android:fontFamily="sans-serif-medium"
                                     android:background="@drawable/selector_tv_button"
@@ -985,7 +985,7 @@
                                     android:layout_height="40dp"
                                     android:layout_weight="1"
                                     android:layout_marginStart="4dp"
-                                    android:text="@string/keep_newest"
+                                    android:text="@string/conflict_strategy_newest"
                                     android:textSize="12.5sp"
                                     android:fontFamily="sans-serif-medium"
                                     android:background="@drawable/selector_tv_button"
@@ -1005,7 +1005,7 @@
                                     android:layout_height="40dp"
                                     android:layout_weight="1"
                                     android:layout_marginEnd="4dp"
-                                    android:text="@string/keep_local"
+                                    android:text="@string/conflict_strategy_keep_local"
                                     android:textSize="12.5sp"
                                     android:fontFamily="sans-serif-medium"
                                     android:background="@drawable/selector_tv_button"
@@ -1018,7 +1018,7 @@
                                     android:layout_height="40dp"
                                     android:layout_weight="1"
                                     android:layout_marginStart="4dp"
-                                    android:text="@string/keep_remote"
+                                    android:text="@string/conflict_strategy_keep_remote"
                                     android:textSize="12.5sp"
                                     android:fontFamily="sans-serif-medium"
                                     android:background="@drawable/selector_tv_button"
@@ -1035,7 +1035,7 @@
                             android:layout_marginTop="14dp"
                             android:textColor="@color/tv_text_primary"
                             android:textSize="14sp"
-                            android:text="@string/move_files_delete_source"
+                            android:text="@string/move_files_upload"
                             android:focusable="true" />
 
                         <TextView
@@ -1045,7 +1045,7 @@
                             android:layout_marginTop="2dp"
                             android:textColor="@color/tv_text_secondary"
                             android:textSize="12sp"
-                            android:text="@string/move_files_desc" />
+                            android:text="@string/move_files_upload_summary" />
 
                         <LinearLayout
                             android:id="@+id/layoutSyncDeletions"

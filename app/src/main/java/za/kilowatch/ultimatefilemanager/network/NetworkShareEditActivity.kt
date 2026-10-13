@@ -356,13 +356,13 @@ class NetworkShareEditActivity : AppCompatActivity() {
             val isSsh = (checkedId == R.id.chipSftp || checkedId == R.id.chipScp)
             val isNfs = (checkedId == R.id.chipNfs)
             val isDlna = (checkedId == R.id.chipDlna)
-            val isFtpOrSftp = (checkedId == R.id.chipFtp || checkedId == R.id.chipSftp || checkedId == R.id.chipScp)
+            val isMultiThreadSupported = (checkedId == R.id.chipFtp || checkedId == R.id.chipSftp || checkedId == R.id.chipScp || checkedId == R.id.chipSmb)
 
             if (isDlna) {
                 applyDlnaVisibility()
             } else {
                 // Restore normal visibility when switching away from DLNA
-                restoreNormalVisibility(isSmb, isSsh, isNfs, isFtpOrSftp)
+                restoreNormalVisibility(isSmb, isSsh, isNfs, isMultiThreadSupported)
             }
 
             resetConnectionTested()
@@ -533,7 +533,7 @@ class NetworkShareEditActivity : AppCompatActivity() {
     }
 
     /** Restore normal field visibility when switching away from DLNA. */
-    private fun restoreNormalVisibility(isSmb: Boolean, isSsh: Boolean, isNfs: Boolean, isFtpOrSftp: Boolean) {
+    private fun restoreNormalVisibility(isSmb: Boolean, isSsh: Boolean, isNfs: Boolean, isMultiThreadSupported: Boolean) {
         layerHost.visibility = View.VISIBLE
         layerPort.visibility = View.VISIBLE
         tilDomain.visibility = if (isSmb) View.VISIBLE else View.GONE
@@ -554,7 +554,7 @@ class NetworkShareEditActivity : AppCompatActivity() {
         layerNfsVersion?.visibility = if (isNfs) View.VISIBLE else View.GONE
         btnScanNfsHosts.visibility = if (isNfs) View.VISIBLE else View.GONE
 
-        layerTransferThreads?.visibility = if (isFtpOrSftp) View.VISIBLE else View.GONE
+        layerTransferThreads?.visibility = if (isMultiThreadSupported) View.VISIBLE else View.GONE
 
         btnToggleSshAuth.visibility = if (isSsh) View.VISIBLE else View.GONE
         cardSshAuth.visibility = View.GONE
@@ -736,9 +736,9 @@ class NetworkShareEditActivity : AppCompatActivity() {
             }
         }
 
-        // Transfer threads selector visibility + state (FTP / SFTP / SCP)
-        val isFtpOrSftp = (share.type == ShareType.FTP || share.type == ShareType.SFTP || share.type == ShareType.SCP)
-        layerTransferThreads?.visibility = if (isFtpOrSftp) View.VISIBLE else View.GONE
+        // Transfer threads selector visibility + state (FTP / SFTP / SCP / SMB)
+        val isMultiThreadSupported = (share.type == ShareType.FTP || share.type == ShareType.SFTP || share.type == ShareType.SCP || share.type == ShareType.SMB)
+        layerTransferThreads?.visibility = if (isMultiThreadSupported) View.VISIBLE else View.GONE
         val threadButtons = listOf(chipThreadsDefault, chipThreads1, chipThreads2, chipThreads4, chipThreads8)
         when (share.parallelThreads) {
             1 -> threadButtons.forEach { it?.isChecked = (it?.id == R.id.chipThreads1) }
@@ -1564,7 +1564,7 @@ class NetworkShareEditActivity : AppCompatActivity() {
                 }
             } else 3,
             exposeToSaf = swExposeToSaf?.isChecked ?: existingShare?.exposeToSaf ?: true,
-            parallelThreads = if (type == ShareType.FTP || type == ShareType.SFTP || type == ShareType.SCP) {
+            parallelThreads = if (type == ShareType.FTP || type == ShareType.SFTP || type == ShareType.SCP || type == ShareType.SMB) {
                 when {
                     chipThreads1?.isChecked == true -> 1
                     chipThreads2?.isChecked == true -> 2

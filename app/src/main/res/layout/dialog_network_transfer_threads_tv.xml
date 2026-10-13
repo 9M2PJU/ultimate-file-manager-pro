@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Transfer Threads Dialog — TV UFMStandard layout.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="680dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_glass"
+    android:padding="28dp">
+
+    <!-- Hero Icon Badge -->
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_btn_icon_frosted"
+        android:layout_marginBottom="12dp">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_lightning"
+            app:tint="?attr/colorPrimary"
+            android:importantForAccessibility="no" />
+    </FrameLayout>
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/txtTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/settings_network_transfer_threads_dialog_title"
+        android:textColor="@color/tv_text_primary"
+        android:textSize="24sp"
+        android:fontFamily="sans-serif-black"
+        android:textAlignment="center" />
+
+    <!-- Description -->
+    <TextView
+        android:id="@+id/txtMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="20dp"
+        android:text="@string/settings_network_transfer_threads_dialog_subtitle"
+        android:textColor="@color/tv_text_secondary"
+        android:textSize="14sp"
+        android:textAlignment="center" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="vertical"
+        android:scrollbarThumbVertical="@color/tv_glass_white_10">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 1 Thread (Single-threaded) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnThreads1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/tv_glass_white_10"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/tv_glass_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/imgIconThreads1"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_lightning"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginEnd="16dp"
+                        android:importantForAccessibility="no" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtTitleThreads1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_single"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/txtDescThreads1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_desc_1"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/checkThreads1"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 2 Threads -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnThreads2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/tv_glass_white_10"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/tv_glass_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/imgIconThreads2"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_lightning"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginEnd="16dp"
+                        android:importantForAccessibility="no" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtTitleThreads2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_2"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/txtDescThreads2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_desc_2"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/checkThreads2"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 4 Threads (Recommended) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnThreads4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/tv_glass_white_10"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/tv_glass_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/imgIconThreads4"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_lightning"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginEnd="16dp"
+                        android:importantForAccessibility="no" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtTitleThreads4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_4"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/txtDescThreads4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_desc_4"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/checkThreads4"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 6 Threads -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnThreads6"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/tv_glass_white_10"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/tv_glass_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/imgIconThreads6"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_lightning"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginEnd="16dp"
+                        android:importantForAccessibility="no" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtTitleThreads6"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_6"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/txtDescThreads6"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_desc_6"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/checkThreads6"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 8 Threads (Maximum) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnThreads8"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/tv_glass_white_10"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/tv_glass_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/imgIconThreads8"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_lightning"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginEnd="16dp"
+                        android:importantForAccessibility="no" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtTitleThreads8"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_8"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/txtDescThreads8"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_network_transfer_threads_desc_8"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/checkThreads8"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- TV Cancel Button -->
+    <Button
+        android:id="@+id/btnCancel"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="@string/cancel"
+        android:background="@drawable/selector_tv_button"
+        android:textColor="@color/tv_text_primary"
+        android:textSize="18sp"
+        android:focusable="true"
+        android:layout_marginTop="12dp" />
+
+</LinearLayout>

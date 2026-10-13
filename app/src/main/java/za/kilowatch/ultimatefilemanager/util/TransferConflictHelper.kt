@@ -630,9 +630,38 @@ object TransferConflictHelper {
                                     }
                                 }
                             } // end else (non-rclone cloud)
+                        } else if (effectiveDestShare.type == ShareType.SMB) {
+                            val threads = effectiveDestShare.effectiveThreads(ctx)
+                            var parallelSuccess = false
+                            if (threads > 1 && effectiveSourceSize >= za.kilowatch.ultimatefilemanager.network.SmbParallelUpload.PARALLEL_MIN_SIZE) {
+                                try {
+                                    parallelSuccess = za.kilowatch.ultimatefilemanager.network.SmbParallelUpload.uploadFileInParallel(
+                                        src = actualSrc,
+                                        destShare = effectiveDestShare,
+                                        destPath = tmpPath,
+                                        threads = threads,
+                                        onProgress = onProgress,
+                                        onConnectionReady = onConnectionReady
+                                    )
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    android.util.Log.w("TransferConflictHelper", "Parallel SMB upload failed (${e.message}), falling back to sequential stream", e)
+                                    parallelSuccess = false
+                                }
+                            }
+                            if (!parallelSuccess) {
+                                val outStream = SmbShareClient.openOutputStream(effectiveDestShare, tmpPath) { conn -> onConnectionReady?.invoke(conn) }
+                                withContext(Dispatchers.IO) {
+                                    FileInputStream(actualSrc).use { inp ->
+                                        outStream.use { out ->
+                                            CopyHelper.copy(inp, out, effectiveSourceSize, onProgress)
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             val outStream = when (effectiveDestShare.type) {
-                                ShareType.SMB -> SmbShareClient.openOutputStream(effectiveDestShare, tmpPath) { conn -> onConnectionReady?.invoke(conn) }
                                 ShareType.FTP -> FtpShareClient.openOutputStream(effectiveDestShare, tmpPath)
                                 ShareType.SFTP, ShareType.SCP -> za.kilowatch.ultimatefilemanager.network.SshShareClient.openOutputStream(effectiveDestShare, tmpPath)
                                 ShareType.NFS -> za.kilowatch.ultimatefilemanager.network.NfsShareClient.openOutputStream(effectiveDestShare, tmpPath)
@@ -918,8 +947,8 @@ object TransferConflictHelper {
                         )
                     } else {
                         val threads = effectiveSrcShare.effectiveThreads(ctx)
-                        val isParallelCandidate = (effectiveSrcShare.type == ShareType.FTP || effectiveSrcShare.type == ShareType.SFTP)
-                            && threads > 1 && srcFile.size >= 5 * 1024 * 1024
+                        val isParallelCandidate = (effectiveSrcShare.type == ShareType.FTP || effectiveSrcShare.type == ShareType.SFTP || effectiveSrcShare.type == ShareType.SMB)
+                            && threads > 1 && srcFile.size >= za.kilowatch.ultimatefilemanager.network.SmbParallelDownload.PARALLEL_MIN_SIZE
                         var parallelHandled = false
                         if (isParallelCandidate) {
                             parallelHandled = when (effectiveSrcShare.type) {
@@ -933,6 +962,15 @@ object TransferConflictHelper {
                                     onConnectionReady = onConnectionReady
                                 )
                                 ShareType.SFTP -> za.kilowatch.ultimatefilemanager.network.SshShareClient.downloadFileParallel(
+                                    share = effectiveSrcShare,
+                                    remotePath = srcFile.path,
+                                    destFile = tempFile,
+                                    totalSize = srcFile.size,
+                                    threads = threads,
+                                    onProgress = onProgress,
+                                    onConnectionReady = onConnectionReady
+                                )
+                                ShareType.SMB -> za.kilowatch.ultimatefilemanager.network.SmbParallelDownload.downloadFileParallel(
                                     share = effectiveSrcShare,
                                     remotePath = srcFile.path,
                                     destFile = tempFile,

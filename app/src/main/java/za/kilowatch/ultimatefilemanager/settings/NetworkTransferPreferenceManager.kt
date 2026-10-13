@@ -3,10 +3,10 @@ package za.kilowatch.ultimatefilemanager.settings
 import android.content.Context
 
 /**
- * Manages the "FTP & SFTP Multi-Threading / Transfer Threads" preference.
+ * Manages the "FTP, SFTP & SMB Multi-Threading / Transfer Threads" preference.
  *
- * Controls the number of parallel connections / worker threads used for FTP and SFTP
- * operations (both parallel multi-file batch transfers and segmented downloads of large files).
+ * Controls the number of parallel connections / worker threads used for FTP, SFTP and SMB
+ * operations (both parallel multi-file batch transfers and segmented transfers of large files).
  *
  * Default: 4 threads (recommended standard).
  * Range: 1 (Single-threaded / Disabled) to 8 (Maximum throughput).

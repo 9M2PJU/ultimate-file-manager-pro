@@ -11,7 +11,7 @@
     android:background="@drawable/bg_dialog_glass"
     android:padding="28dp">
 
-    <!-- Title row with hero icon -->
+    <!-- Title row with frosted hero icon -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -19,14 +19,21 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="14dp">
 
-        <ImageView
-            android:id="@+id/imgProgressIcon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_copy"
-            app:tint="?attr/ufmFocusFill"
-            android:layout_marginEnd="14dp"
-            android:importantForAccessibility="no" />
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_btn_icon_frosted"
+            android:layout_marginEnd="14dp">
+
+            <ImageView
+                android:id="@+id/imgProgressIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_copy"
+                app:tint="?attr/ufmFocusFill"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/txtProgressTitle"
@@ -69,14 +76,105 @@
         android:progress="0"
         app:indicatorColor="?attr/ufmFocusFill" />
 
-    <TextView
-        android:id="@+id/txtProgressSize"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/s_0_mb_0_mb_0"
-        android:textColor="@color/tv_text_secondary"
-        android:textSize="13sp"
-        android:gravity="end" />
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/txtProgressSize"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/s_0_mb_0_mb_0"
+            android:textColor="@color/tv_text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/txtProgressSpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="?attr/ufmFocusFill"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- TV Section: Per-Thread Speed & Multi-threading Telemetry -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/layoutThreadSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardBackgroundColor="@color/tv_glass_white_10"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/tv_glass_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="10dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_lightning"
+                    app:tint="?attr/ufmFocusFill"
+                    android:layout_marginEnd="8dp"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/txtThreadSectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/transfer_threads_header"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/txtPerThreadSpeed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/transfer_per_thread_placeholder"
+                    android:textColor="?attr/ufmFocusFill"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <GridLayout
+                android:id="@+id/gridThreadSpeeds"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:alignmentMode="alignMargins"
+                android:useDefaultMargins="true" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- TV Cancel Button -->
+    <Button
+        android:id="@+id/btnCancel"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="@string/cancel"
+        android:background="@drawable/selector_tv_button"
+        android:textColor="@color/tv_text_primary"
+        android:textSize="16sp"
+        android:focusable="true"
+        android:layout_marginTop="16dp" />
 
 </LinearLayout>
