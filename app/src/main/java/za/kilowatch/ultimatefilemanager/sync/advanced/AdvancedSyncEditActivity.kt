@@ -99,8 +99,8 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
     private var editIncludePatterns: TextInputEditText? = null
     private var editMinSize: TextInputEditText? = null
     private var editMaxSize: TextInputEditText? = null
-    private var toggleMinSizeUnit: MaterialButtonToggleGroup? = null
-    private var toggleMaxSizeUnit: MaterialButtonToggleGroup? = null
+    private var toggleMinSizeUnit: View? = null
+    private var toggleMaxSizeUnit: View? = null
     private var editMinAge: TextInputEditText? = null
     private var editMaxAge: TextInputEditText? = null
     private lateinit var switchNotifications: MaterialSwitch
@@ -243,6 +243,17 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
         editMaxSize = findViewById(R.id.editMaxSize)
         toggleMinSizeUnit = findViewById(R.id.toggleMinSizeUnit)
         toggleMaxSizeUnit = findViewById(R.id.toggleMaxSizeUnit)
+
+        (toggleMinSizeUnit as? Button)?.setOnClickListener { btn ->
+            val b = btn as Button
+            val isGb = b.text.toString().equals(getString(R.string.size_unit_gb), ignoreCase = true)
+            b.text = getString(if (isGb) R.string.size_unit_mb else R.string.size_unit_gb)
+        }
+        (toggleMaxSizeUnit as? Button)?.setOnClickListener { btn ->
+            val b = btn as Button
+            val isGb = b.text.toString().equals(getString(R.string.size_unit_gb), ignoreCase = true)
+            b.text = getString(if (isGb) R.string.size_unit_mb else R.string.size_unit_gb)
+        }
         editMinAge = findViewById(R.id.editMinAge)
         editMaxAge = findViewById(R.id.editMaxAge)
         switchNotifications = findViewById(R.id.switchNotifications)
@@ -603,8 +614,18 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
         editMaxSize?.setText(if (profile.maxSizeBytes > 0) {
             ((if (profile.maxSizeIsGB) profile.maxSizeBytes / (1024*1024*1024) else profile.maxSizeBytes / (1024*1024)).toString())
         } else "")
-        toggleMinSizeUnit?.check(if (profile.minSizeIsGB) R.id.chipSizeMinGB else R.id.chipSizeMinMB)
-        toggleMaxSizeUnit?.check(if (profile.maxSizeIsGB) R.id.chipSizeMaxGB else R.id.chipSizeMaxMB)
+        val minGroup = toggleMinSizeUnit as? MaterialButtonToggleGroup
+        if (minGroup != null) {
+            minGroup.check(if (profile.minSizeIsGB) R.id.chipSizeMinGB else R.id.chipSizeMinMB)
+        } else {
+            (toggleMinSizeUnit as? Button)?.text = getString(if (profile.minSizeIsGB) R.string.size_unit_gb else R.string.size_unit_mb)
+        }
+        val maxGroup = toggleMaxSizeUnit as? MaterialButtonToggleGroup
+        if (maxGroup != null) {
+            maxGroup.check(if (profile.maxSizeIsGB) R.id.chipSizeMaxGB else R.id.chipSizeMaxMB)
+        } else {
+            (toggleMaxSizeUnit as? Button)?.text = getString(if (profile.maxSizeIsGB) R.string.size_unit_gb else R.string.size_unit_mb)
+        }
         editMinAge?.setText(if (profile.minAgeMinutes > 0) (profile.minAgeMinutes / (24*60)).toString() else "")
         editMaxAge?.setText(if (profile.maxAgeMinutes > 0) (profile.maxAgeMinutes / (24*60)).toString() else "")
 
@@ -754,6 +775,28 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun isMinSizeGB(): Boolean {
+        val toggle = toggleMinSizeUnit
+        return if (toggle is MaterialButtonToggleGroup) {
+            toggle.checkedButtonId == R.id.chipSizeMinGB
+        } else if (toggle is Button) {
+            toggle.text.toString().equals(getString(R.string.size_unit_gb), ignoreCase = true)
+        } else {
+            false
+        }
+    }
+
+    private fun isMaxSizeGB(): Boolean {
+        val toggle = toggleMaxSizeUnit
+        return if (toggle is MaterialButtonToggleGroup) {
+            toggle.checkedButtonId == R.id.chipSizeMaxGB
+        } else if (toggle is Button) {
+            toggle.text.toString().equals(getString(R.string.size_unit_gb), ignoreCase = true)
+        } else {
+            false
+        }
+    }
+
     private fun doSaveProfile(name: String, scheduleType: String) {
         val incTagsList = mutableListOf<String>()
         val cgInc = chipGroupIncludeTags
@@ -778,6 +821,9 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
             }
         }
         val excTags = excTagsList.joinToString(",")
+
+        val minIsGB = isMinSizeGB()
+        val maxIsGB = isMaxSizeGB()
 
         val profile = AdvancedSyncProfile(
             id = profileId ?: java.util.UUID.randomUUID().toString(),
@@ -807,13 +853,13 @@ class AdvancedSyncEditActivity : AppCompatActivity() {
             includeTags = incTags,
             excludeTags = excTags,
             minSizeBytes = (editMinSize?.text?.toString()?.toDoubleOrNull() ?: 0.0).let {
-                (it * if (toggleMinSizeUnit?.checkedButtonId == R.id.chipSizeMinGB) 1024*1024*1024 else 1024*1024).toLong()
+                (it * if (minIsGB) 1024L*1024L*1024L else 1024L*1024L).toLong()
             },
             maxSizeBytes = (editMaxSize?.text?.toString()?.toDoubleOrNull() ?: 0.0).let {
-                (it * if (toggleMaxSizeUnit?.checkedButtonId == R.id.chipSizeMaxGB) 1024*1024*1024 else 1024*1024).toLong()
+                (it * if (maxIsGB) 1024L*1024L*1024L else 1024L*1024L).toLong()
             },
-            minSizeIsGB = toggleMinSizeUnit?.checkedButtonId == R.id.chipSizeMinGB,
-            maxSizeIsGB = toggleMaxSizeUnit?.checkedButtonId == R.id.chipSizeMaxGB,
+            minSizeIsGB = minIsGB,
+            maxSizeIsGB = maxIsGB,
             minAgeMinutes = (editMinAge?.text?.toString()?.toLongOrNull() ?: 0L) * 24 * 60,
             maxAgeMinutes = (editMaxAge?.text?.toString()?.toLongOrNull() ?: 0L) * 24 * 60,
             downloadSubfolders = switchDownloadSubfolders?.isChecked ?: false,
