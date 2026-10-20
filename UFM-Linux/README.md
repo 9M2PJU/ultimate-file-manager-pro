@@ -3,7 +3,8 @@
 > **Official Linux desktop companion for [Ultimate File Manager Pro (UFM)](https://github.com/Kilowatch/ultimate-file-manager-pro)** — a high-performance dual-pane file manager, remote APK/XAPK sideloading tool, and device management utility designed Wayland-first for modern Linux desktops and tiling window managers.
 
 ![Platform](https://img.shields.io/badge/platform-Linux%20(Wayland%20%2F%20X11)-orange?logo=linux)
-![Packaging](https://img.shields.io/badge/package-AppImage%20%7C%20Deb-blue)
+![Packaging](https://img.shields.io/badge/package-AppImage%20%7C%20Deb%20%7C%20RPM%20%7C%20AUR-blue)
+[![AUR](https://img.shields.io/aur/version/ufm-companion-bin?label=AUR%20ufm-companion-bin&logo=archlinux)](https://aur.archlinux.org/packages/ufm-companion-bin)
 ![Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB?logo=tauri)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange?logo=rust)
 ![React](https://img.shields.io/badge/frontend-React%2019-61DAFB?logo=react)
@@ -49,6 +50,38 @@ The Ultimate File Manager Pro Linux Companion allows power users to establish a 
 
 ---
 
+## Installation
+
+Pre-built binaries are published on every
+[GitHub Release](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest):
+
+| File | Target | Install |
+|---|---|---|
+| `ufm-companion-x86_64.AppImage` | Universal (Wayland-first, no install) | `chmod +x ufm-companion-x86_64.AppImage && ./ufm-companion-x86_64.AppImage` |
+| `ufm-companion_amd64.deb` | Debian / Ubuntu | `sudo apt install ./ufm-companion_amd64.deb` |
+| `ufm-companion-x86_64.rpm` | Fedora / RHEL / openSUSE | `sudo dnf install ./ufm-companion-x86_64.rpm` (openSUSE: `sudo zypper install ./ufm-companion-x86_64.rpm`) |
+
+### Arch Linux (AUR)
+
+The AUR package **`ufm-companion-bin`** wraps the official AppImage
+(installs to `/opt/ufm-companion`, symlinks `/usr/bin/ufm-companion`, ships a
+tiling-WM friendly desktop entry):
+
+```bash
+yay -S ufm-companion-bin
+# or: paru -S ufm-companion-bin
+# manual:
+git clone https://aur.archlinux.org/ufm-companion-bin.git
+cd ufm-companion-bin
+makepkg -si
+```
+
+- AUR page: https://aur.archlinux.org/packages/ufm-companion-bin
+- Packaging sources in this repo: [`packaging/aur/`](packaging/aur/) (see its
+  `README.md` for bumping `pkgver` / refreshing `sha256sums` / republishing).
+
+---
+
 ## Prerequisites
 
 | Requirement | Supported Version | Details |
@@ -72,6 +105,22 @@ sudo apt install -y \
   librsvg2-dev
 ```
 
+### Installing Linux Build Dependencies (Fedora / RHEL — for RPM builds)
+```bash
+sudo dnf install -y \
+  webkit2gtk4.1-devel \
+  libayatana-appindicator-gtk3-devel \
+  librsvg2-devel \
+  openssl-devel \
+  curl wget file \
+  gcc gcc-c++ make patchelf
+```
+
+### Runtime Dependencies (Arch — covered automatically by the AUR package)
+`webkit2gtk-4.1`, `gtk3`, `libayatana-appindicator`, `librsvg`, `libsoup3`,
+`cairo`, `gdk-pixbuf2`, `glib2`, `pango`, `openssl` — see
+[`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD).
+
 ---
 
 ## Building Locally
@@ -87,12 +136,22 @@ npm install
 npm run tauri dev
 ```
 
-### 3. Build Production AppImage & Deb
+### 3. Build Production AppImage, Deb & RPM
 ```bash
-npm run tauri build -- --bundles appimage,deb
+npm run tauri build -- --bundles appimage,deb,rpm
+# or via npm scripts:
+npm run build:linux
 ```
-The resulting standalone `.AppImage` will be located in:
-`src-tauri/target/release/bundle/appimage/`
+Bundles are produced in:
+- `src-tauri/target/release/bundle/appimage/` (`.AppImage`)
+- `src-tauri/target/release/bundle/deb/` (`.deb` for Debian/Ubuntu)
+- `src-tauri/target/release/bundle/rpm/` (`.rpm` for Fedora/RHEL/openSUSE)
+
+> RPM metadata (`depends`, `release`, `epoch`) is configured in
+> `src-tauri/tauri.conf.json` → `bundle.linux.rpm`:
+> `webkit2gtk4.1`, `gtk3`, `libayatana-appindicator-gtk3`, `librsvg2`.
+> Release assets are renamed by CI to `ufm-companion-x86_64.rpm`.
+> See `.github/workflows/linux-companion.yml`.
 
 ---
 
@@ -123,7 +182,7 @@ If you are developing inside Windows Subsystem for Linux (WSL) without a physica
 > Run the verification step after every release build to confirm the frontend bundle
 > is embedded:
 > ```bash
-> npm run tauri build -- --bundles appimage,deb
+> npm run tauri build -- --bundles appimage,deb,rpm
 > npm run verify:appimage
 > ```
 
