@@ -186,6 +186,14 @@ UFM includes a native, Wayland-first Linux desktop companion built with Rust, GT
 #### Install (pick one)
 
 ```bash
+# ⚡ One-line install (Linux: auto-picks .deb / .rpm / AUR / AppImage)
+curl -fsSL https://raw.githubusercontent.com/Kilowatch/ultimate-file-manager-pro/main/UFM-Linux/scripts/install.sh | sh
+
+# Pinned release, non-interactive:
+curl -fsSL https://raw.githubusercontent.com/Kilowatch/ultimate-file-manager-pro/main/UFM-Linux/scripts/install.sh | sh -s -- --tag v2.1.8 --yes
+```
+
+```bash
 # AppImage (universal, no install)
 chmod +x ufm-companion-x86_64.AppImage
 ./ufm-companion-x86_64.AppImage

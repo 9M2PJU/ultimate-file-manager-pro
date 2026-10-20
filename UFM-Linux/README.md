@@ -52,7 +52,16 @@ The Ultimate File Manager Pro Linux Companion allows power users to establish a 
 
 ## Installation
 
-Pre-built binaries are published on every
+> ⚡ **One-line install** (Linux auto-picks `.deb` / `.rpm` / AUR / AppImage):
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/Kilowatch/ultimate-file-manager-pro/main/UFM-Linux/scripts/install.sh | sh
+> ```
+> Options: `sh -s -- --tag v2.1.8 --yes`, `--method deb|rpm|aur|appimage|source`,
+> `--system` (AppImage → `/opt`), `--uninstall`, `--dry-run`, `--help`.
+> No prebuilt FreeBSD binary exists — on FreeBSD the same script performs an
+> experimental native source build (see below).
+
+Pre-built Linux binaries are published on every
 [GitHub Release](https://github.com/Kilowatch/ultimate-file-manager-pro/releases/latest):
 
 | File | Target | Install |
@@ -79,6 +88,21 @@ makepkg -si
 - AUR page: https://aur.archlinux.org/packages/ufm-companion-bin
 - Packaging sources in this repo: [`packaging/aur/`](packaging/aur/) (see its
   `README.md` for bumping `pkgver` / refreshing `sha256sums` / republishing).
+
+### FreeBSD (experimental — native source build)
+
+There is no prebuilt FreeBSD binary. The installer script detects FreeBSD and
+builds natively (all required libs exist in ports: `webkit2-gtk_41`,
+`gtk3`, `libsoup3`, `librsvg2-rust`, `libappindicator`, plus `tauri-cli`):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Kilowatch/ultimate-file-manager-pro/main/UFM-Linux/scripts/install.sh | sh
+```
+
+This installs build deps via `pkg(8)` (needs root), compiles the frontend +
+Rust backend (`cargo build --release`), and installs
+`/usr/local/bin/ufm-companion` with a desktop entry. First build takes several
+minutes. Uninstall with `sh install.sh --uninstall`.
 
 ---
 
